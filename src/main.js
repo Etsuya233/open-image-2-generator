@@ -1511,7 +1511,7 @@ function buildCustomApiForSummary() {
 }
 
 async function collectContextText({ historyEndId = null } = {}) {
-  updateStep('message', 'running', '读取角色卡/世界书/聊天历史');
+  updateStep('message', 'running', '读取角色卡/世界书激活/聊天历史');
   const context = SillyTavern.getContext();
   const pieces = [];
   const report = {
@@ -1539,17 +1539,10 @@ async function collectContextText({ historyEndId = null } = {}) {
 
   if (state.settings.summaryIncludeWorldbooks) {
     const limit = Number(state.settings.summaryWorldbookEntryLimit);
-    const bookTexts = [];
-    for (const name of tavern.getBoundWorldbookNames()) {
-      if (bookTexts.length >= limit) break;
-      const entries = await tavern.getWorldbook(name);
-      const enabled = entries.filter(entry => entry.enabled);
-      report.worldbooks.push({ name, entries: entries.length, enabled: enabled.length });
-      for (const entry of enabled) {
-        if (bookTexts.length >= limit) break;
-        bookTexts.push(`【${name} / ${entry.name || entry.uid}】\n${clip(entry.content, 900)}`);
-      }
-    }
+    const activated = await tavern.getActivatedWorldInfo({ upToMessageId: historyEndId });
+    report.worldbooks = activated.map(({ world, uid, name }) => ({ world, uid, name }));
+    const bookTexts = activated.slice(0, limit)
+      .map(entry => `【${entry.world} / ${entry.name}】\n${clip(entry.content, 900)}`);
     if (bookTexts.length) pieces.push(`# 世界书片段\n${bookTexts.join('\n\n')}`);
   }
 

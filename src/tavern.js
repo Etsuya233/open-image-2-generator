@@ -1,6 +1,6 @@
-import { selected_world_info, world_info, loadWorldInfo } from '/scripts/world-info.js';
+import { checkWorldInfo, getWorldInfoSettings } from '/scripts/world-info.js';
+import { user_avatar } from '/scripts/personas.js';
 import { proxies } from '/scripts/openai.js';
-import { getCharaFilename } from '/scripts/utils.js';
 
 const SETTINGS_KEY = 'open_image_2_generator';
 const LEGACY_SETTINGS_KEY = 'oair_image2_character_reference_settings_v2';
@@ -79,28 +79,31 @@ export function uninjectPrompts(ids) {
     for (const id of ids) delete context.extensionPrompts[id];
 }
 
-export function getBoundWorldbookNames() {
+export async function getActivatedWorldInfo({ upToMessageId } = {}) {
     const context = SillyTavern.getContext();
+    const last = upToMessageId == null ? context.chat.length - 1 : Math.min(upToMessageId, context.chat.length - 1);
+    const messages = last < 0 ? [] : getChatMessages(`0-${last}`, { hide_state: 'unhidden' });
+    const { world_info_include_names } = getWorldInfoSettings();
+    const chat = messages
+        .map(message => world_info_include_names ? `${message.name}: ${message.message}` : message.message)
+        .reverse();
     const character = context.characters[context.characterId];
-    const additional = character
-        ? world_info.charLore?.find(item => item.name === getCharaFilename(context.characterId))?.extraBooks ?? []
-        : [];
-    return [...new Set([
-        ...selected_world_info,
-        character?.data?.extensions?.world,
-        ...additional,
-        context.chatMetadata.world_info,
-    ].filter(Boolean))];
-}
-
-export async function getWorldbook(name) {
-    const book = await loadWorldInfo(name);
-    if (!book) throw new Error(`世界书 ${name} 不存在`);
-    return Object.values(book.entries).map(entry => ({
+    const card = character ? { ...character, ...character.data } : {};
+    const persona = context.powerUserSettings?.persona_descriptions?.[user_avatar];
+    const activated = await checkWorldInfo(chat, context.maxContext, true, {
+        personaDescription: persona?.description ?? context.powerUserSettings?.persona_description ?? '',
+        characterDescription: card.description ?? '',
+        characterPersonality: card.personality ?? '',
+        characterDepthPrompt: card.depth_prompt?.prompt ?? '',
+        scenario: card.scenario ?? '',
+        creatorNotes: card.creator_notes ?? '',
+        trigger: 'normal',
+    });
+    return Array.from(activated.allActivatedEntries ?? []).map(entry => ({
+        world: entry.world,
         uid: entry.uid,
-        name: entry.comment,
-        content: entry.content,
-        enabled: !entry.disable,
+        name: entry.comment || String(entry.uid),
+        content: entry.content ?? '',
     }));
 }
 

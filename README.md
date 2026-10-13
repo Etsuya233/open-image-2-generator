@@ -65,6 +65,8 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 
 「5. 生图测试」里的聊天楼层用于定位素材，留空时取最后一条 assistant 消息。运行生图测试在提示词框为空时，先按「提取提示词正则」从该楼层取提示词，再发给图片后端；「从上下文生成提示词」把该楼层正文和截到该楼层为止的聊天历史交给第四步的 AI 整理；「从上下文中提取提示词」只按同一个正则从该楼层取提示词，不调用 AI。三个按钮都只写入面板，不改动聊天。
 
+第四步勾选「读取该楼层会激活的世界书片段」时，插件用 ST 自己的世界书激活逻辑（`checkWorldInfo`，dry run 模式）对截到该楼层的聊天求激活，再按「世界书激活条目上限」截断。世界书内容和关键词命中都按选中楼层计算，但读取的是当前的全局设置、当前选中的书和当前角色书，ST 不保存每层的历史快照。
+
 设置存储于 `extensionSettings.open_image_2_generator`，参考图片存储于 IndexedDB `oair_image2_character_reference_v1`，标题折叠状态存储于 localStorage `oair_image2_character_reference_collapsed_sections_v1`，面板拖拽位置存储于 localStorage `oair_image2_character_reference_panel_position_v1`，面板尺寸存储于 localStorage `oair_image2_character_reference_panel_size_v1`。
 
 ## 面板布局
