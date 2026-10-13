@@ -1,3 +1,4 @@
+import { captureSource, sourceIsCurrent, saveGeneratedImage, createGallery } from './gallery.js';
 import * as tavern from './tavern.js';
 import { defaultSettings, DEFAULT_MAIN_PROMPT, DEFAULT_CONTEXT_PROMPT, DEFAULT_FALLBACK_PROMPT, DEFAULT_REFERENCE_PROMPT_TEMPLATE, IMAGE_PROMPT_WORDING_RULES } from './defaults.js';
 
@@ -9,6 +10,7 @@ const REFERENCE_DB_STORE = 'reference_images';
 const MAX_LOGS = 120;
 const MAX_RENDERED_LOGS = 40;
 let panelHtml;
+let generatedGallery;
 
 const state = {
   settings: { ...defaultSettings },
@@ -25,7 +27,6 @@ const state = {
   renderLogsQueued: false,
   renderStepsQueued: false,
   busyButtons: new Set(),
-  galleryCount: 0,
   activeTab: 'main',
   referenceDb: null,
   referenceImages: new Map(),
@@ -856,7 +857,7 @@ async function callImageApi(prompt, referenceContext = { characters: [], images:
 
     if (response.ok) {
       updateStep('api', 'ok', `返回成功，耗时 ${(elapsedMs / 1000).toFixed(2)} 秒`);
-      return { data, responseText, elapsedMs };
+      return { data, responseText, elapsedMs, request, attempt };
     }
 
     const errorText = data?.error?.message || responseText || response.statusText;
@@ -897,37 +898,6 @@ function looksLikeImageUrl(value) {
     || /^\/[^/\s][^\s]*\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/i.test(text);
 }
 
-function isDataImageUrl(value) {
-  return /^data:image\/[^;]+;base64,/i.test(String(value || '').trim());
-}
-
-async function nextUiFrame() {
-  const win = state.uiWindow || W;
-  await new Promise(resolve => {
-    if (typeof win.requestAnimationFrame === 'function') {
-      win.requestAnimationFrame(() => resolve());
-    } else {
-      setTimeout(resolve, 0);
-    }
-  });
-}
-
-async function imageUrlForDisplay(url) {
-  const text = String(url || '').trim();
-  if (!isDataImageUrl(text)) return text;
-  try {
-    const response = await fetch(text);
-    const blob = await response.blob();
-    const URLApi = state.uiWindow?.URL || W.URL || URL;
-    const objectUrl = URLApi.createObjectURL(blob);
-    state.objectUrls.add(objectUrl);
-    return objectUrl;
-  } catch (error) {
-    addLog('warn', 'base64 图片转换 blob URL 失败，改用 data URL 直接预览', { error: error.message });
-    return text;
-  }
-}
-
 function imageFileExtension(url) {
   const text = String(url || '');
   const dataMatch = text.match(/^data:image\/([^;]+);/i);
@@ -959,7 +929,48 @@ function closeImageLightbox() {
   q('#oair_lightbox')?.remove();
 }
 
-function openImageLightbox(url, prompt = '') {
+function lightboxField(doc, label, value, tag = 'span') {
+  const field = doc.createElement('div');
+  field.className = 'oair-lightbox-field';
+  const key = doc.createElement('span');
+  key.className = 'k';
+  key.textContent = label;
+  const content = doc.createElement(tag);
+  content.className = 'v';
+  content.textContent = value;
+  field.append(key, content);
+  return field;
+}
+
+function buildLightboxMeta(doc, meta, prompt) {
+  const aside = doc.createElement('aside');
+  aside.className = 'oair-lightbox-meta';
+  if (meta.fields?.length) {
+    const fields = doc.createElement('div');
+    fields.className = 'oair-lightbox-fields';
+    for (const [label, value] of meta.fields) fields.append(lightboxField(doc, label, value));
+    aside.append(fields);
+  }
+  for (const [label, value] of [['原始 Prompt', prompt], ['提交 Prompt', meta.submittedPrompt]]) {
+    if (!value) continue;
+    const block = doc.createElement('div');
+    block.className = 'oair-lightbox-block';
+    block.append(lightboxField(doc, label, value, 'pre'));
+    aside.append(block);
+  }
+  if (meta.json) {
+    const details = doc.createElement('details');
+    const summary = doc.createElement('summary');
+    summary.textContent = '完整元数据与角色 / Persona 快照';
+    const pre = doc.createElement('pre');
+    pre.textContent = meta.json;
+    details.append(summary, pre);
+    aside.append(details);
+  }
+  return aside;
+}
+
+function openImageLightbox(url, prompt = '', meta = null) {
   const href = String(url || '').trim();
   if (!href) return;
   closeImageLightbox();
@@ -969,15 +980,31 @@ function openImageLightbox(url, prompt = '') {
   overlay.innerHTML = `
     <div class="oair-lightbox-inner" role="dialog" aria-modal="true">
       <div class="oair-lightbox-toolbar">
+        <span class="oair-lightbox-title"></span>
+        <a class="oair-btn secondary" target="_blank" rel="noopener">打开原图</a>
         <button class="oair-btn secondary" id="oair_lightbox_save" type="button">保存</button>
         <button class="oair-btn secondary" id="oair_lightbox_close" type="button">关闭</button>
       </div>
-      <img class="oair-lightbox-img" alt="image2 large preview">
-      <pre class="oair-lightbox-prompt"></pre>
+      <div class="oair-lightbox-view"></div>
     </div>
   `;
-  overlay.querySelector('.oair-lightbox-img').src = href;
-  overlay.querySelector('.oair-lightbox-prompt').textContent = prompt || '';
+  const view = overlay.querySelector('.oair-lightbox-view');
+  const image = doc.createElement('img');
+  image.className = 'oair-lightbox-img';
+  image.alt = 'image2 大图预览';
+  image.src = href;
+  view.append(image);
+  overlay.querySelector('.oair-lightbox-title').textContent = meta?.title ?? '';
+  overlay.querySelector('a.oair-btn').href = href;
+  if (meta) {
+    view.classList.add('has-meta');
+    view.append(buildLightboxMeta(doc, meta, prompt));
+  } else if (prompt) {
+    const text = doc.createElement('pre');
+    text.className = 'oair-lightbox-prompt';
+    text.textContent = prompt;
+    view.append(text);
+  }
   overlay.addEventListener('click', event => {
     if (event.target === overlay) closeImageLightbox();
   });
@@ -1013,93 +1040,6 @@ function appendImageActionButtons(host, doc, url, prompt = '', inlineStyle = fal
 
   actions.append(zoom, save);
   host.appendChild(actions);
-}
-
-function candidateDocuments() {
-  const docs = [];
-  const pushDoc = doc => {
-    if (doc?.body && !docs.includes(doc)) docs.push(doc);
-  };
-  pushDoc(state.uiDocument);
-  pushDoc(document);
-  try {
-    pushDoc(W.parent?.document);
-  } catch {
-    // Cross-origin parent.
-  }
-  try {
-    pushDoc(W.top?.document);
-  } catch {
-    // Cross-origin top.
-  }
-  return docs;
-}
-
-function findChatMessageElement(messageId) {
-  const numericId = Number(messageId);
-  const ids = [numericId, numericId - 1, numericId + 1]
-    .filter(Number.isFinite)
-    .map(id => String(id));
-  for (const doc of candidateDocuments()) {
-    for (const id of ids) {
-      const selectors = [
-        `.mes[mesid="${id}"]`,
-        `[mesid="${id}"]`,
-        `.mes[data-mes-id="${id}"]`,
-        `[data-mes-id="${id}"]`,
-        `.mes[data-message-id="${id}"]`,
-        `[data-message-id="${id}"]`,
-        `[data-messageid="${id}"]`,
-        `#message_${id}`,
-        `#mes_${id}`,
-      ];
-      for (const selector of selectors) {
-        const el = doc.querySelector(selector);
-        if (el) return el;
-      }
-    }
-
-    const messageEls = Array.from(doc.querySelectorAll('.mes'));
-    for (const index of [numericId, numericId - 1]) {
-      if (Number.isInteger(index) && messageEls[index]) return messageEls[index];
-    }
-  }
-  return null;
-}
-
-function injectChatImagePreview(messageId, displayUrl, prompt, source = '') {
-  const messageEl = findChatMessageElement(messageId);
-  if (!messageEl) {
-    addLog('warn', '聊天楼层 DOM 暂不可用，将改用图库回显', { messageId, source });
-    return false;
-  }
-
-  const doc = messageEl.ownerDocument || uiDoc();
-  messageEl.querySelectorAll?.(`.oair-chat-image[data-oair-message-id="${messageId}"]`).forEach(el => el.remove());
-  const host = messageEl.querySelector?.('.mes_text') || messageEl.querySelector?.('.mes_block') || messageEl;
-  const wrap = doc.createElement('div');
-  wrap.className = 'oair-chat-image';
-  wrap.dataset.oairMessageId = String(messageId);
-  wrap.style.cssText = 'margin-top:10px;display:grid;gap:4px;max-width:min(520px,100%);';
-
-  const img = doc.createElement('img');
-  img.src = displayUrl;
-  img.alt = 'image2';
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  img.style.cssText = 'width:100%;max-height:420px;object-fit:contain;border-radius:6px;background:rgba(0,0,0,.18);';
-  bindImageActions(img, displayUrl, prompt);
-
-  const meta = doc.createElement('div');
-  meta.className = 'oair-chat-image-meta';
-  meta.textContent = 'image2 轻量回显';
-  meta.title = prompt || '';
-  meta.style.cssText = 'font-size:11px;color:rgba(233,238,245,.62);';
-
-  wrap.append(img, meta);
-  appendImageActionButtons(wrap, doc, displayUrl, prompt, true);
-  host.appendChild(wrap);
-  return true;
 }
 
 function collectImageUrls(data, responseText) {
@@ -1162,65 +1102,17 @@ function imageMarkdown(url) {
   return `![image2](${safeUrl})`;
 }
 
-async function updateMessageWithImage(messageId, cleanedMessage, imageUrl, prompt, options = {}) {
-
-  const useInlineBase64 = state.settings.inlineBase64ChatImage && isDataImageUrl(imageUrl);
-  const displayUrl = options.displayUrl || imageUrl;
-  const message = state.settings.appendImageToMessage
-    ? `${cleanedMessage ? `${cleanedMessage}\n\n` : ''}${useInlineBase64 ? '' : imageMarkdown(imageUrl)}`.trim()
-    : cleanedMessage;
-
-  if (!options.messageAlreadyCleaned || !useInlineBase64) {
-    updateStep('write', 'running', `正在写回第 ${messageId} 楼`);
-    await tavern.setChatMessages([{ message_id: Number(messageId), message }], { refresh: 'affected' });
-    await nextUiFrame();
-  }
-
-  if (useInlineBase64 && state.settings.appendImageToMessage) {
-    await nextUiFrame();
-    const injected = injectChatImagePreview(messageId, displayUrl, prompt, options.source);
-    if (!injected) {
-      addGeneratedImageToGallery(displayUrl, prompt, {
-        title: `第 ${messageId} 楼生成结果`,
-        source: options.source,
-        status: '聊天界面不可用，图片已放入图库',
-      });
-    } else if (options.keepGalleryCopy) {
-      addGeneratedImageToGallery(displayUrl, prompt, {
-        title: `第 ${messageId} 楼生成结果`,
-        source: options.source,
-        status: '图片已回显，并保留到图库',
-        openPanel: false,
-      });
-    }
-    updateStep('write', 'ok', injected ? `第 ${messageId} 楼已轻量回显` : '聊天界面不可用，已放入图库');
-    addLog(injected ? 'info' : 'warn', injected ? 'base64 图片已使用轻量 DOM 回显' : '聊天 DOM 回显失败，图片已放入图库', {
-      messageId,
-      prompt,
-      source: options.source,
-      originalImageUrl: imageUrl,
-      displayUrl,
-      messageUpdated: !options.messageAlreadyCleaned || !useInlineBase64,
-      galleryFallback: !injected,
-    });
-    return;
-  }
-
-  if (options.keepGalleryCopy && (!useInlineBase64 || !state.settings.appendImageToMessage)) {
-    addGeneratedImageToGallery(displayUrl, prompt, {
-      title: `第 ${messageId} 楼生成结果`,
-      source: options.source,
-      status: state.settings.appendImageToMessage ? '图片已写回聊天，并保留到图库' : '图片已放入图库',
-      openPanel: false,
-    });
-  }
-
-  updateStep('write', 'ok', `第 ${messageId} 楼已更新`);
-  addLog('info', '聊天楼层已写回', { messageId, prompt, imageUrl, message });
+async function updateMessageWithImage(messageId, cleanedMessage, imageUrls) {
+  if (!state.settings.appendImageToMessage) return;
+  const message = `${cleanedMessage ? `${cleanedMessage}\n\n` : ''}${imageUrls.map(imageMarkdown).join('\n\n')}`;
+  await tavern.setChatMessages([{ message_id: Number(messageId), message }]);
+  updateStep('write', 'ok', `第 ${messageId} 楼已写入 ST 图片链接`);
 }
 
 async function processPromptToImage(prompt, options = {}) {
   const runStarted = performance.now();
+  const startedAt = new Date().toISOString();
+  const source = options.sourceSnapshot ?? captureSource(options.messageId);
   if (!options.keepSteps) resetSteps();
   setElapsed(NaN);
   setStatus('正在生成图片...', 'running');
@@ -1257,31 +1149,41 @@ async function processPromptToImage(prompt, options = {}) {
     });
     const result = await callImageApi(prompt.trim(), referenceContext);
 
+    const completedAt = new Date().toISOString();
     updateStep('parse', 'running', '正在解析图片链接');
     const urls = collectImageUrls(result.data, result.responseText);
     if (!urls.length) {
       updateStep('parse', 'fail', '没有找到图片 URL 或 base64 图片字段');
       throw new Error('图片 API 返回成功，但没有解析到图片。请检查 media/data/url/b64_json 或返回图片正则。');
     }
-    const first = urls[0];
-    updateStep('parse', 'ok', `找到 ${urls.length} 张，使用第 1 张`);
-    addLog('info', '图片结果解析成功', { urls });
-    const displayUrl = await imageUrlForDisplay(first.url);
-
-    if (options.previewOnly) {
-      updateStep('write', 'running', '正在写入测试预览');
-      addPreview(displayUrl, prompt, performance.now() - runStarted);
-      updateStep('write', 'ok', '测试预览已更新');
-    } else if (Number.isFinite(Number(options.messageId))) {
-      await updateMessageWithImage(options.messageId, options.cleanedMessage ?? '', first.url, prompt, {
-        displayUrl,
-        source: first.source,
-        messageAlreadyCleaned: Boolean(options.messageAlreadyCleaned),
-        keepGalleryCopy: Boolean(state.settings.keepGalleryCopy),
+    updateStep('parse', 'ok', `找到 ${urls.length} 张图片`);
+    updateStep('write', 'running', '正在保存图片与元数据到 ST');
+    const records = [];
+    const submittedContent = result.request.body.prompt ?? result.request.body.messages?.[0]?.content ?? result.request.finalPrompt;
+    const submittedPrompt = Array.isArray(submittedContent)
+      ? submittedContent.filter(part => part.type === 'text').map(part => part.text).join('\n')
+      : submittedContent;
+    for (const image of urls) {
+      const record = await saveGeneratedImage(image.url, {
+        source, startedAt, completedAt,
+        generationMs: result.elapsedMs, elapsedBeforeSaveMs: Math.round(performance.now() - runStarted),
+        attempts: result.attempt, prompt, submittedPrompt,
+        parameters: { model: result.request.body.model, size: result.request.body.size,
+          n: result.request.body.n, mode: result.request.mode },
+        references: referenceContext.images.map(({ id, characterName, fileName }) => ({ id, characterName, fileName })),
       });
-    } else {
-      updateStep('write', 'ok', '没有指定聊天楼层，仅完成 API 调用');
+      records.push(record);
+      generatedGallery?.add(record);
     }
+    const first = { url: records[0].imagePath };
+    if (!options.previewOnly && options.messageId != null) {
+      if (sourceIsCurrent(source, options.cleanedMessage)) {
+        await updateMessageWithImage(options.messageId, options.cleanedMessage ?? '', records.map(r => r.imagePath));
+      } else {
+        addLog('warn', '来源聊天或楼层内容已变化，图片已保存到图库，未写回聊天');
+      }
+    }
+    updateStep('write', 'ok', `已保存 ${records.length} 张图片与元数据`);
 
     const totalMs = performance.now() - runStarted;
     updateStep('done', 'ok', `总耗时 ${(totalMs / 1000).toFixed(2)} 秒`);
@@ -1366,6 +1268,7 @@ async function onMessageReceived(messageIdLike, ...args) {
       return;
     }
 
+    const sourceSnapshot = captureSource(messageId);
     updateStep('prompt', 'running', '正在提取 <pic prompt="...">');
     const extracted = extractPicPrompts(message.message || '');
     if (!extracted.prompts.length) {
@@ -1378,6 +1281,7 @@ async function onMessageReceived(messageIdLike, ...args) {
         const fallbackPrompt = await generateFallbackPromptFromMessage(message);
         await processPromptToImage(fallbackPrompt, {
           messageId,
+          sourceSnapshot,
           cleanedMessage: message.message || '',
           keepSteps: true,
           matchText: message.message || '',
@@ -1410,6 +1314,7 @@ async function onMessageReceived(messageIdLike, ...args) {
 
     await processPromptToImage(prompt, {
       messageId,
+      sourceSnapshot,
       cleanedMessage,
       messageAlreadyCleaned,
       keepSteps: true,
@@ -1502,48 +1407,6 @@ function saveSettings(options = {}) {
     setStatus(`保存失败：${error.message}`, 'error');
     notify('error', `保存失败：${error.message}`);
   }
-}
-
-function addPreview(url, prompt, elapsedMs, metaOptions = {}) {
-  const box = q('#oair_test_preview');
-  if (!box) return;
-  state.galleryCount += 1;
-  const count = q('#oair_gallery_count');
-  if (count) count.textContent = String(state.galleryCount);
-  const item = makeEl('div');
-  item.className = 'oair-preview-item';
-
-  const img = makeEl('img');
-  img.src = url;
-  img.alt = 'image2 preview';
-  img.loading = 'lazy';
-  img.decoding = 'async';
-  bindImageActions(img, url, prompt);
-
-  const meta = makeEl('div');
-  meta.className = 'oair-preview-meta';
-  const parts = [];
-  if (metaOptions.title) parts.push(metaOptions.title);
-  if (Number.isFinite(elapsedMs) && elapsedMs > 0) parts.push(`耗时 ${(elapsedMs / 1000).toFixed(2)} 秒`);
-  if (metaOptions.source) parts.push(`来源 ${metaOptions.source}`);
-  meta.textContent = parts.join(' · ') || 'image2 生成结果';
-
-  const pre = makeEl('pre');
-  pre.textContent = prompt;
-
-  item.append(img, meta);
-  appendImageActionButtons(item, uiDoc(), url, prompt);
-  item.append(pre);
-  box.prepend(item);
-  while (box.children.length > 24) {
-    box.lastElementChild?.remove();
-  }
-}
-
-function addGeneratedImageToGallery(url, prompt, metaOptions = {}) {
-  addPreview(url, prompt, NaN, metaOptions);
-  if (metaOptions.openPanel !== false) setPanelVisible(true);
-  setStatus(metaOptions.status || '图片已放入图库', 'ok');
 }
 
 async function runImageTest() {
@@ -1737,11 +1600,12 @@ async function runContextPromptOnly() {
 
 async function runContextThenImage() {
   saveSettings();
+  const sourceSnapshot = captureSource();
   try {
     const prompt = await generatePromptFromContext();
     const input = q('#oair_test_prompt');
     if (input) input.value = prompt;
-    await processPromptToImage(prompt, { previewOnly: true });
+    await processPromptToImage(prompt, { previewOnly: true, sourceSnapshot });
   } catch {
     // Logged.
   }
@@ -2095,7 +1959,10 @@ function renderReferenceMatchPreview() {
 }
 
 function switchPanelTab(tabName) {
-  state.activeTab = tabName === 'references' ? 'references' : 'main';
+  state.activeTab = tabName;
+  if (!generatedGallery) generatedGallery = createGallery(state.panel, { openLightbox: openImageLightbox });
+  state.panel.dataset.oairTab = tabName;
+  if (tabName === 'gallery') generatedGallery.load().catch(error => setStatus(error.message, 'error'));
   qa('[data-oair-tab]').forEach(button => {
     const active = button.dataset.oairTab === state.activeTab;
     button.classList.toggle('active', active);
@@ -2187,6 +2054,7 @@ function makeUi() {
   });
   doc.body.appendChild(panel);
   state.panel = panel;
+  generatedGallery = createGallery(panel, { openLightbox: openImageLightbox });
 
   writeSettingsToUi();
   resetSteps();
@@ -2249,13 +2117,10 @@ function makeUi() {
   bindDom('#oair_btn_test', 'click', () => runWithButtonBusy('#oair_btn_test', '生成中...', runImageTest));
   bindDom('#oair_btn_context_prompt', 'click', () => runWithButtonBusy('#oair_btn_context_prompt', '整理中...', runContextPromptOnly));
   bindDom('#oair_btn_context_image', 'click', () => runWithButtonBusy('#oair_btn_context_image', '生成中...', runContextThenImage));
-  bindDom('#oair_btn_clear_preview', 'click', () => {
-    const box = q('#oair_test_preview');
-    if (box) box.innerHTML = '';
-    state.galleryCount = 0;
-    const count = q('#oair_gallery_count');
-    if (count) count.textContent = '0';
-    setStatus('图库已清空', 'ok');
+  bindDom('#oair_gallery_refresh', 'click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    generatedGallery.load().catch(error => setStatus(error.message, 'error'));
   });
   bindDom('#oair_btn_clear_log', 'click', () => {
     state.logs = [];

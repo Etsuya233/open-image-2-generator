@@ -48,6 +48,7 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 | `manifest.json` | ST 扩展元数据、入口与样式声明 |
 | `index.js` | 等待 ST 就绪后启动扩展 |
 | `src/main.js` | 图片请求、参考图库、面板交互与自动生图流程 |
+| `src/gallery.js` | ST 图片与元数据保存、来源快照、生成图库展示与筛选 |
 | `src/tavern.js` | ST 原生聊天读写、提示注入、世界书与文本生成接口、设置迁移 |
 | `src/defaults.js` | 默认设置与提示词 |
 | `src/panel.html` | 面板结构 |
@@ -67,3 +68,11 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 ## 关联源码
 
 `link/JS-Slash-Runner` 和 `link/SillyTavern` 是指向真实仓库的目录联接；使用前阅读 `AGENTS.md` 中的规则。原生扩展开发通常只需要修改本仓库。
+
+## 持久生成图库
+
+所有生成结果（包括生图测试和多图返回）默认上传到 ST 当前用户的 `user/images/open-image2/`。聊天回显使用 ST 图片链接，刷新后仍可显示。原有 base64 轻量回显和临时图库副本设置不再参与生成流程。
+
+每张图片对应一个 `user/files/open-image2-<图片ID>.json`，记录来源聊天与楼层内容、Persona 名称/描述、角色卡快照、原始和提交 Prompt、生成时间、请求耗时、保存前流程耗时、保存时累计耗时、请求次数、模型/尺寸和参考图信息。记录不包含图片 API 认证头或密钥。角色卡和聊天快照可能包含私人内容，请按聊天资料管理这些文件。
+
+“生成图库”独立 Tab 支持 Persona、角色卡与本地生成日期范围组合筛选，筛选会显示成可单独取消的标签。缩略图按本地日期分组（今天、昨天、具体日期），图上标出参考图数量与生成耗时；点击缩略图打开大图，来源聊天、角色卡、耗时、Prompt 与完整元数据在同一层里查看，也可以用“打开原图”下载。刷新图库会重新从 ST 读取文件。生成期间切换聊天或切换来源楼层的 swipe 时，结果保存到图库并跳过聊天写回。远程图片 URL 需要允许浏览器跨域下载；下载或保存失败会在状态中显示错误。元数据保存失败时，已保存的图片路径会出现在错误消息中，图库会明确报告缺失记录。

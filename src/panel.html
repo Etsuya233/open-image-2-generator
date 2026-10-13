@@ -13,6 +13,7 @@
 
   <div class="oair-tabs" role="tablist" aria-label="image2 功能页面">
     <button class="oair-tab active" data-oair-tab="main" role="tab" aria-selected="true" type="button">生图与设置</button>
+    <button class="oair-tab" data-oair-tab="gallery" role="tab" aria-selected="false" type="button">生成图库</button>
     <button class="oair-tab" data-oair-tab="references" role="tab" aria-selected="false" type="button">角色参考图库</button>
   </div>
 
@@ -24,8 +25,6 @@
     <label class="oair-check"><input data-oair-setting="autoFallbackWhenNoPic" type="checkbox">没有 &lt;pic&gt; 标签时自动补救生成提示词</label>
     <label class="oair-check"><input data-oair-setting="removePicTag" type="checkbox">提取后移除 &lt;pic&gt; 标签</label>
     <label class="oair-check"><input data-oair-setting="appendImageToMessage" type="checkbox">生成成功后写回当前聊天楼层</label>
-    <label class="oair-check"><input data-oair-setting="inlineBase64ChatImage" type="checkbox">base64 图片使用轻量回显，避免写入超长聊天文本</label>
-    <label class="oair-check"><input data-oair-setting="keepGalleryCopy" type="checkbox">自动生成结果保留到图库</label>
     <div class="oair-field">
       <label>世界书式默认提示词</label>
       <textarea data-oair-setting="mainPrompt" rows="12" placeholder="这里的内容会在生成前注入给主模型。"></textarea>
@@ -175,7 +174,7 @@
   </div>
 
   <div class="oair-section" data-oair-section="gallery">
-    <div class="oair-section-title">5. 测试与图库 <span class="oair-badge" id="oair_gallery_count">0</span></div>
+    <div class="oair-section-title">5. 生图测试</div>
     <div class="oair-field">
       <label>要发送给后端的提示词</label>
       <textarea id="oair_test_prompt" rows="3" placeholder="要发送给图片后端的提示词..."></textarea>
@@ -185,9 +184,7 @@
       <button id="oair_btn_test" class="oair-btn" type="button">运行生图测试</button>
       <button id="oair_btn_context_prompt" class="oair-btn secondary" type="button">从上下文生成提示词</button>
       <button id="oair_btn_context_image" class="oair-btn secondary" type="button">上下文生成并生图</button>
-      <button id="oair_btn_clear_preview" class="oair-btn secondary" type="button">清空图库</button>
     </div>
-    <div id="oair_test_preview"></div>
   </div>
 
   <div class="oair-section" data-oair-section="steps">
@@ -205,6 +202,24 @@
   </div>
   </div>
 
+  <div data-oair-tab-pane="gallery" hidden>
+    <div class="oair-section" data-oair-section="generated-gallery">
+      <div class="oair-section-title">生成图库 <span id="oair_gallery_count" class="oair-badge">0</span>
+        <span class="oair-gallery-actions">
+          <button id="oair_gallery_clear" class="oair-btn secondary" type="button">清除筛选</button>
+          <button id="oair_gallery_refresh" class="oair-btn secondary" type="button">刷新</button>
+        </span>
+      </div>
+      <div class="oair-gallery-filters">
+        <label class="oair-field">Persona<select id="oair_gallery_persona" data-gallery-filter><option value="">全部</option></select></label>
+        <label class="oair-field">角色卡<select id="oair_gallery_character" data-gallery-filter><option value="">全部</option></select></label>
+        <label class="oair-field">日期从<input type="date" id="oair_gallery_from" data-gallery-filter></label>
+        <label class="oair-field">日期至<input type="date" id="oair_gallery_to" data-gallery-filter></label>
+      </div>
+      <div id="oair_gallery_chips" class="oair-gallery-chips" hidden></div>
+      <div id="oair_generated_gallery"></div>
+    </div>
+  </div>
   <div data-oair-tab-pane="references" hidden>
     <div class="oair-section" data-oair-section="reference-settings">
       <div class="oair-section-title">图生图参考调用</div>

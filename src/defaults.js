@@ -76,8 +76,6 @@ export const defaultSettings = {
   autoFallbackWhenNoPic: true,
   removePicTag: true,
   appendImageToMessage: true,
-  inlineBase64ChatImage: true,
-  keepGalleryCopy: true,
   mainPrompt: DEFAULT_MAIN_PROMPT,
 
   serviceUrl: 'http://127.0.0.1:8199/v1/images/generations',
