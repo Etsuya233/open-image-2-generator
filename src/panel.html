@@ -116,13 +116,15 @@
 
   <div class="oair-section" data-oair-section="context-prompt">
     <div class="oair-section-title">4. 从上下文整理提示词（可选）</div>
-    <div class="oair-field">
-      <label>整理规则</label>
-      <textarea data-oair-setting="summaryPrompt" rows="7"></textarea>
-    </div>
-    <div class="oair-field">
-      <label>无标签补救规则</label>
-      <textarea data-oair-setting="fallbackPrompt" rows="8"></textarea>
+    <div class="oair-grid-2">
+      <div class="oair-field">
+        <label>整理预设</label>
+        <select id="oair_summary_profile" data-oair-setting="summaryProfileId"></select>
+      </div>
+      <div class="oair-field">
+        <label>补救预设（没有 &lt;pic&gt; 标签时）</label>
+        <select id="oair_fallback_profile" data-oair-setting="fallbackProfileId"></select>
+      </div>
     </div>
     <div class="oair-grid-3">
       <div class="oair-field">
@@ -166,12 +168,41 @@
         <input data-oair-setting="summaryWorldbookEntryLimit" type="number" min="0" step="1">
       </div>
     </div>
-    <label class="oair-check"><input data-oair-setting="summaryIncludeWorldbooks" type="checkbox">读取该楼层会激活的世界书片段</label>
-    <label class="oair-check"><input data-oair-setting="summaryIncludeVariables" type="checkbox">读取聊天变量（可能包含敏感信息）</label>
     <div class="oair-btn-row">
-      <button id="oair_btn_reset_summary_rules" class="oair-btn secondary" type="button">恢复默认整理/补救规则</button>
+      <button id="oair_btn_edit_profiles" class="oair-btn secondary" type="button">编辑预设</button>
     </div>
-    <div class="oair-help">这里使用自定义提示词和读取到的上下文，不直接套用当前酒馆预设。</div>
+    <div class="oair-help">整理和补救各自选一个预设，预设决定发给 AI 的 Prompt 顺序、内容和角色。预设里可以插入角色卡、世界书激活片段、聊天记录、聊天变量和本次回复这些内置素材条目。</div>
+
+    <div id="oair_profile_editor" class="oair-profile-editor" hidden>
+      <div class="oair-grid-2">
+        <div class="oair-field">
+          <label>正在编辑的预设</label>
+          <select id="oair_profile_select"></select>
+        </div>
+        <div class="oair-field">
+          <label>预设名称</label>
+          <input id="oair_profile_name" placeholder="预设名称">
+        </div>
+      </div>
+      <div class="oair-btn-row">
+        <button id="oair_profile_new" class="oair-btn secondary" type="button">新建预设</button>
+        <button id="oair_profile_copy" class="oair-btn secondary" type="button">复制为副本</button>
+        <button id="oair_profile_delete" class="oair-btn danger" type="button">删除预设</button>
+        <button id="oair_profile_export" class="oair-btn secondary" type="button">导出全部</button>
+        <button id="oair_profile_import" class="oair-btn secondary" type="button">导入</button>
+        <input id="oair_profile_import_file" type="file" accept="application/json,.json" hidden>
+      </div>
+      <div class="oair-prompt-list-head">
+        <span>Prompt 顺序 <span id="oair_profile_entry_count" class="oair-badge">0</span></span>
+        <span class="oair-help">从上到下依次发送，每条都能单独开关并选择角色。</span>
+      </div>
+      <div id="oair_profile_prompt_list" class="oair-prompt-list"></div>
+      <div class="oair-btn-row">
+        <button id="oair_profile_add_prompt" class="oair-btn secondary" type="button">新增 Prompt</button>
+        <button id="oair_profile_reset_prompts" class="oair-btn secondary" type="button">恢复默认条目</button>
+      </div>
+      <div class="oair-help">预设里可以直接写酒馆宏，例如 {{char}}、{{user}}、{{getvar::变量名}}、{{random::甲,乙}}，发送前会按当前聊天替换。另外 <code>{{image2_context}}</code> 会插入角色卡、世界书片段和最近聊天记录，<code>{{image2_reply}}</code> 会插入本次 assistant 回复正文。聊天变量属于敏感素材，只有打开「聊天变量」条目时才会读取。</div>
+    </div>
   </div>
 
   <div class="oair-section" data-oair-section="gallery">

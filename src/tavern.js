@@ -107,12 +107,22 @@ export async function getActivatedWorldInfo({ upToMessageId } = {}) {
     }));
 }
 
-export async function generateRaw({ ordered_prompts, custom_api }) {
+/**
+ * @param {object} params
+ * @param {{role: string, content: string}[]} params.ordered_prompts 按顺序排好的消息
+ * @param {object} [params.custom_api] 覆盖用的 API 配置
+ * @param {boolean} [params.substitute_macros] 是否由插件替换酒馆宏。
+ *   走文本补全时酒馆自己会替换，这里传 false，避免 {{random}} 这类宏被抽两次。
+ */
+export async function generateRaw({ ordered_prompts, custom_api, substitute_macros = false }) {
     const context = SillyTavern.getContext();
     if (!custom_api && context.mainApi !== 'openai') {
         return context.generateRaw({ prompt: ordered_prompts, instructOverride: true });
     }
-    const overrides = { messages: ordered_prompts, stream: false };
+    const messages = substitute_macros
+        ? ordered_prompts.map(message => ({ ...message, content: context.substituteParams(message.content) }))
+        : ordered_prompts;
+    const overrides = { messages, stream: false };
     if (custom_api?.model) overrides.model = custom_api.model;
     if (custom_api?.proxy_preset) {
         const proxy = proxies.find(item => item.name === custom_api.proxy_preset);
