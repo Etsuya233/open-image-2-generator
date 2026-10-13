@@ -1,4 +1,5 @@
 import { captureSource, sourceIsCurrent, saveGeneratedImage, createGallery } from './gallery.js';
+import { createEntries } from './entry.js';
 import * as tavern from './tavern.js';
 import { defaultSettings, DEFAULT_MAIN_PROMPT, DEFAULT_CONTEXT_PROMPT, DEFAULT_FALLBACK_PROMPT, DEFAULT_REFERENCE_PROMPT_TEMPLATE, IMAGE_PROMPT_WORDING_RULES } from './defaults.js';
 
@@ -21,7 +22,7 @@ const state = {
   inFlightMessages: new Set(),
   currentRun: null,
   panel: null,
-  launcher: null,
+  entries: null,
   uiWindow: null,
   uiDocument: null,
   steps: new Map(),
@@ -1341,7 +1342,9 @@ function getSettingsFromUi() {
   qa('[data-oair-setting]').forEach(el => {
     const key = el.dataset.oairSetting;
     if (!key) return;
-    if (el.type === 'checkbox') {
+    if (el.type === 'radio') {
+      if (el.checked) next[key] = el.value;
+    } else if (el.type === 'checkbox') {
       next[key] = el.checked;
     } else if (el.type === 'number') {
       next[key] = Number(el.value);
@@ -1382,7 +1385,9 @@ function writeSettingsToUi() {
     const key = el.dataset.oairSetting;
     if (!key) return;
     const value = state.settings[key];
-    if (el.type === 'checkbox') {
+    if (el.type === 'radio') {
+      el.checked = el.value === String(value ?? '');
+    } else if (el.type === 'checkbox') {
       el.checked = Boolean(value);
     } else {
       el.value = value ?? '';
@@ -2168,16 +2173,6 @@ function syncPanelLayout() {
   panel.style.top = `${position.top}px`;
 }
 
-// 启动按钮固定定位按布局视口计算，这里补上浏览器底栏或软键盘遮住的部分，保持按钮可见。
-function syncLauncherPosition() {
-  const launcher = state.launcher;
-  if (!launcher) return;
-  const win = state.uiWindow || W;
-  const viewport = win.visualViewport;
-  const occluded = viewport ? Math.max(0, win.innerHeight - viewport.height - viewport.offsetTop) : 0;
-  launcher.style.bottom = `calc(${16 + occluded}px + env(safe-area-inset-bottom, 0px))`;
-}
-
 function readStoredPanelPosition() {
   try {
     const saved = JSON.parse((state.uiWindow || W).localStorage.getItem(PANEL_POSITION_KEY) || 'null');
@@ -2321,19 +2316,15 @@ function enablePanelDrag() {
 function bindPanelLayout() {
   const win = state.uiWindow || W;
   let queued = false;
-  const syncLayout = () => {
-    syncPanelLayout();
-    syncLauncherPosition();
-  };
   const queueSync = () => {
     if (queued) return;
     queued = true;
     (win.requestAnimationFrame || (callback => callback()))(() => {
       queued = false;
-      syncLayout();
+      syncPanelLayout();
     });
   };
-  syncLayout();
+  syncPanelLayout();
   win.addEventListener('resize', queueSync);
   win.addEventListener('orientationchange', queueSync);
   win.visualViewport?.addEventListener('resize', queueSync);
@@ -2376,17 +2367,7 @@ async function runWithButtonBusy(selector, busyText, handler) {
 function makeUi() {
   const doc = initUiTarget();
   const oldPanel = q('#oair_panel');
-  const oldLauncher = q('#oair_launcher');
   oldPanel?.remove();
-  oldLauncher?.remove();
-
-  const launcher = makeEl('button');
-  launcher.id = 'oair_launcher';
-  launcher.type = 'button';
-  launcher.textContent = 'image2 参考图';
-  launcher.title = '打开 image2 角色参考图增强版面板';
-  doc.body.appendChild(launcher);
-  state.launcher = launcher;
 
   const panel = makeEl('div');
   panel.id = 'oair_panel';
@@ -2425,14 +2406,24 @@ function makeUi() {
   bindPanelLayout();
   generatedGallery = createGallery(panel, { openLightbox: openImageLightbox });
 
+  state.entries = createEntries({
+    doc,
+    onToggle: () => setPanelVisible(state.panel.hidden),
+    onChange: entryPoint => {
+      state.settings.entryPoint = entryPoint;
+      saveSettings({ silent: true });
+      state.entries.apply(entryPoint);
+      addLog('info', '生图入口已切换', { entryPoint });
+    },
+  });
+  state.entries.apply(state.settings.entryPoint);
+
   writeSettingsToUi();
   resetSteps();
   renderLogs();
   renderReferenceCharacters();
   renderReferenceMatchPreview();
 
-  launcher.addEventListener('click', () => setPanelVisible(state.panel.hidden));
-  state.disposers.push(() => launcher.remove());
   state.disposers.push(() => panel.remove());
   const onKeyDown = event => {
     if (event.key === 'Escape') closeImageLightbox();
@@ -2566,6 +2557,8 @@ function destroy(reason = 'manual') {
   state.objectUrls.clear();
   state.referenceDb?.close();
   state.referenceDb = null;
+  state.entries?.destroy();
+  state.entries = null;
   qa('.oair-chat-image').forEach(el => el.remove());
   q('#oair_lightbox')?.remove();
   while (state.disposers.length) {
@@ -2577,7 +2570,6 @@ function destroy(reason = 'manual') {
     }
   }
   q('#oair_panel')?.remove();
-  q('#oair_launcher')?.remove();
   console.log(`[${NS}] destroyed: ${reason}`);
 }
 

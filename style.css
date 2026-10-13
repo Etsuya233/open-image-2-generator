@@ -8,9 +8,17 @@
   color: #fff;
   padding: 8px 12px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: grab;
   font-size: 13px;
+  /* 拖拽用指针事件实现，这里禁掉触摸滚动和文字选择 */
+  touch-action: none;
+  user-select: none;
 }
+#oair_launcher.oair-launcher-dragging { cursor: grabbing; }
+/* ST 扩展设置里的生图入口选择 */
+#oair_settings .oair-entry-hint { display: block; margin-top: 2px; opacity: .75; line-height: 1.5; }
+/* 酒馆的 .menu_button 用 min-content 定宽，中文会被挤成一列，这里按内容宽度排 */
+#oair_settings .menu_button { width: max-content; white-space: nowrap; }
 #oair_panel {
   position: fixed;
   left: 50%;

@@ -70,6 +70,8 @@ export const DEFAULT_REFERENCE_PROMPT_TEMPLATE = [
 ].join('\n');
 
 export const defaultSettings = {
+  // 'wand' = 挂到酒馆扩展菜单（输入框旁的魔法棒）；'floating' = 右下角可拖拽悬浮窗按钮
+  entryPoint: 'wand',
   enabled: true,
   injectMainPrompt: true,
   processAssistantMessages: true,
