@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check index.js && node --check src/main.js && node --check src/defaults.js && node --check src/tavern.js && node --check src/gallery.js"
+    "check": "node --check index.js && node --check src/main.js && node --check src/defaults.js && node --check src/tavern.js && node --check src/gallery.js && node --check src/entry.js"
   }
 }

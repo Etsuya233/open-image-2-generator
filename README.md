@@ -4,7 +4,7 @@ SillyTavern 原生 UI 扩展：自动读取回复末尾的 `<pic prompt="...">` 
 
 ## 安装与更新
 
-将此仓库放在 `SillyTavern/data/<用户>/extensions/open-image-2-generator` 下，确保该目录直接包含 `manifest.json`，然后刷新 ST 页面。右下角的 **image2 参考图** 按钮用于打开面板。
+将此仓库放在 `SillyTavern/data/<用户>/extensions/open-image-2-generator` 下，确保该目录直接包含 `manifest.json`，然后刷新 ST 页面。默认从输入框左侧的魔法棒（酒馆扩展菜单）里的 **image2 参考图** 打开面板，入口可以改成右下角的悬浮窗，见下文“生图入口”。
 
 仓库发布到 Git 远端后，也可以在 ST 的“扩展 → 安装扩展”中填写仓库地址安装，并通过扩展管理更新。目前本仓库没有配置 Git 远端。
 
@@ -50,6 +50,7 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 | `src/main.js` | 图片请求、参考图库、面板交互与自动生图流程 |
 | `src/gallery.js` | ST 图片与元数据保存、来源快照、生成图库展示与筛选 |
 | `src/tavern.js` | ST 原生聊天读写、提示注入、世界书与文本生成接口、设置迁移 |
+| `src/entry.js` | 生图入口（魔法棒菜单项与悬浮窗按钮）与酒馆扩展设置里的入口选项 |
 | `src/defaults.js` | 默认设置与提示词 |
 | `src/panel.html` | 面板结构 |
 | `style.css` | 面板与图片样式 |
@@ -68,6 +69,21 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 第四步勾选「读取该楼层会激活的世界书片段」时，插件用 ST 自己的世界书激活逻辑（`checkWorldInfo`，dry run 模式）对截到该楼层的聊天求激活，再按「世界书激活条目上限」截断。世界书内容和关键词命中都按选中楼层计算，但读取的是当前的全局设置、当前选中的书和当前角色书，ST 不保存每层的历史快照。
 
 设置存储于 `extensionSettings.open_image_2_generator`，参考图片存储于 IndexedDB `oair_image2_character_reference_v1`，标题折叠状态存储于 localStorage `oair_image2_character_reference_collapsed_sections_v1`，面板拖拽位置存储于 localStorage `oair_image2_character_reference_panel_position_v1`，面板尺寸存储于 localStorage `oair_image2_character_reference_panel_size_v1`。
+
+## 生图入口
+
+酒馆的「扩展」设置页左侧有一栏 **image2 角色参考图**（`#extensions_settings` 里的 `inline-drawer`），里面的「生图入口」有两个互斥选项：
+
+| 选项 | 入口位置 |
+| --- | --- |
+| 输入框旁边的魔法棒 | 挂到酒馆扩展菜单（`#extensionsMenu`）里的 **image2 参考图** 菜单项 |
+| 可拖拽悬浮窗 | 右下角常驻的 **image2 参考图** 按钮，按住可以拖到屏幕任意位置 |
+
+默认是魔法棒。切换后立刻生效，不需要刷新页面，也不需要点保存。两个入口都是点击切换面板的显示/隐藏，打开的是同一个面板，拖动和缩放行为完全一致。设置保存为 `entryPoint`（`wand` 或 `floating`）。
+
+悬浮按钮拖动时按位移区分：移动超过 4px 算拖拽，松手不会误触面板开关；停下后位置写入 localStorage 键 `oair_image2_character_reference_launcher_position_v1`，刷新后保留。没拖过的按钮仍贴右下角，并按可视化视口补偿浏览器底栏和软键盘；拖过之后位置超出屏幕时会自动收回可视范围。
+
+设置里的 **重置悬浮窗位置** 按钮会删掉这条位置记录，把按钮放回右下角初始位置。这个按钮只在悬浮窗模式下可用，选魔法棒时置灰。
 
 ## 面板布局
 
