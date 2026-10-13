@@ -63,6 +63,8 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 
 提示词整理支持酒馆当前连接、ST 反向代理预设和独立 API。当前连接使用 ST 原生生成接口，覆盖模型时使用聊天补全连接；独立 API 与反向代理通过 ST 聊天补全后端发送请求。
 
+「5. 生图测试」里的聊天楼层用于定位素材，留空时取最后一条 assistant 消息。运行生图测试在提示词框为空时，先按「提取提示词正则」从该楼层取提示词，再发给图片后端；「从上下文生成提示词」把该楼层正文和截到该楼层为止的聊天历史交给第四步的 AI 整理；「从上下文中提取提示词」只按同一个正则从该楼层取提示词，不调用 AI。三个按钮都只写入面板，不改动聊天。
+
 设置存储于 `extensionSettings.open_image_2_generator`，参考图片存储于 IndexedDB `oair_image2_character_reference_v1`，标题折叠状态存储于 localStorage `oair_image2_character_reference_collapsed_sections_v1`，面板拖拽位置存储于 localStorage `oair_image2_character_reference_panel_position_v1`，面板尺寸存储于 localStorage `oair_image2_character_reference_panel_size_v1`。
 
 ## 面板布局

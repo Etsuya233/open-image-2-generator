@@ -1413,13 +1413,79 @@ function saveSettings(options = {}) {
   }
 }
 
+function getLastAssistantMessageId() {
+  const { chat } = SillyTavern.getContext();
+  for (let index = chat.length - 1; index >= 0; index -= 1) {
+    if (tavern.getChatMessages(index)[0]?.role === 'assistant') return index;
+  }
+  return null;
+}
+
+function readTestFloor() {
+  const { chat } = SillyTavern.getContext();
+  const raw = q('#oair_test_message')?.value?.trim() ?? '';
+  const messageId = raw === '' ? getLastAssistantMessageId() : Number(raw);
+  if (messageId == null) throw new Error('当前聊天没有 assistant 楼层，请填写楼层号');
+  if (!Number.isInteger(messageId) || messageId < 0 || messageId >= chat.length) {
+    throw new Error(`楼层号无效：${raw || messageId}（当前共 ${chat.length} 楼，从 0 开始）`);
+  }
+  const message = tavern.getChatMessages(messageId)[0];
+  if (!message) throw new Error(`楼层 ${messageId} 不存在`);
+  return { messageId, message, usedDefault: raw === '' };
+}
+
+function readTestFloorPrompt() {
+  const floor = readTestFloor();
+  const extracted = extractPicPrompts(floor.message.message || '');
+  const prompt = extracted.prompts[0];
+  if (!prompt) throw new Error(`第 ${floor.messageId} 楼没有匹配到提示词`);
+  addLog('info', '已从聊天楼层提取提示词', {
+    messageId: floor.messageId,
+    usedDefaultFloor: floor.usedDefault,
+    role: floor.message.role,
+    name: floor.message.name || '',
+    promptCount: extracted.prompts.length,
+    prompt,
+  });
+  return { messageId: floor.messageId, prompt };
+}
+
+function logTestFailure(error) {
+  addLog('error', '生图测试失败', { error: error.message, stack: error.stack });
+  setStatus(`测试失败：${error.message}`, 'error');
+}
+
 async function runImageTest() {
   saveSettings();
-  const prompt = q('#oair_test_prompt')?.value?.trim();
+  const input = q('#oair_test_prompt');
+  let prompt = input?.value?.trim() || '';
+  if (!prompt) {
+    try {
+      const extracted = readTestFloorPrompt();
+      prompt = extracted.prompt;
+      if (input) input.value = prompt;
+      setStatus(`提示词为空，已从第 ${extracted.messageId} 楼提取`, 'ok');
+    } catch (error) {
+      logTestFailure(error);
+      return;
+    }
+  }
   try {
     await processPromptToImage(prompt, { previewOnly: true });
   } catch {
     // Already logged by processPromptToImage.
+  }
+}
+
+function runExtractPromptFromMessage() {
+  saveSettings();
+  try {
+    const extracted = readTestFloorPrompt();
+    const input = q('#oair_test_prompt');
+    if (input) input.value = extracted.prompt;
+    setStatus(`已从第 ${extracted.messageId} 楼提取提示词`, 'ok');
+  } catch (error) {
+    logTestFailure(error);
   }
 }
 
@@ -1444,11 +1510,17 @@ function buildCustomApiForSummary() {
   };
 }
 
-async function collectContextText() {
+async function collectContextText({ historyEndId = null } = {}) {
   updateStep('message', 'running', '读取角色卡/世界书/聊天历史');
   const context = SillyTavern.getContext();
   const pieces = [];
-  const report = { characterRead: false, worldbooks: [], messages: 0, variablesIncluded: state.settings.summaryIncludeVariables };
+  const report = {
+    characterRead: false,
+    worldbooks: [],
+    messages: 0,
+    variablesIncluded: state.settings.summaryIncludeVariables,
+    historyEnd: historyEndId,
+  };
   const character = context.characters[context.characterId];
   if (character) {
     const card = { ...character, ...character.data };
@@ -1482,7 +1554,7 @@ async function collectContextText() {
   }
 
   if (context.chat.length) {
-    const last = context.chat.length - 1;
+    const last = historyEndId == null ? context.chat.length - 1 : Math.min(historyEndId, context.chat.length - 1);
     const count = Math.max(1, Number(state.settings.summaryMaxChatHistory));
     const start = Math.max(0, last - count + 1);
     const messages = tavern.getChatMessages(`${start}-${last}`, { hide_state: 'unhidden' });
@@ -1508,6 +1580,7 @@ async function generatePromptByScriptContext({
   sourceMessage = '',
   sourceLabel = 'context',
   keepSteps = false,
+  historyEndId = null,
 } = {}) {
 
   if (!keepSteps) resetSteps();
@@ -1525,7 +1598,7 @@ async function generatePromptByScriptContext({
       customApi,
     });
 
-    const contextText = await collectContextText();
+    const contextText = await collectContextText({ historyEndId });
     if (!contextText && !sourceMessage) throw new Error('没有可用于整理的上下文或消息正文');
 
     updateStep('prompt', 'running', sourceLabel === 'fallback' ? '正在补救生成 <pic> 提示词' : '正在调用 AI 整理提示词');
@@ -1587,31 +1660,34 @@ async function generateFallbackPromptFromMessage(message) {
   });
 }
 
-async function generatePromptFromContext() {
-  return generatePromptByScriptContext({ systemPrompt: state.settings.summaryPrompt, sourceLabel: 'context', keepSteps: false });
+function generatePromptFromContext({ sourceMessage = '', historyEndId = null } = {}) {
+  return generatePromptByScriptContext({
+    systemPrompt: state.settings.summaryPrompt,
+    sourceMessage,
+    historyEndId,
+    sourceLabel: 'context',
+    keepSteps: false,
+  });
 }
 
 async function runContextPromptOnly() {
   saveSettings();
+  let floor;
   try {
-    const prompt = await generatePromptFromContext();
-    const input = q('#oair_test_prompt');
-    if (input) input.value = prompt;
-  } catch {
-    // Logged.
+    floor = readTestFloor();
+  } catch (error) {
+    logTestFailure(error);
+    return;
   }
-}
-
-async function runContextThenImage() {
-  saveSettings();
-  const sourceSnapshot = captureSource();
   try {
-    const prompt = await generatePromptFromContext();
+    const prompt = await generatePromptFromContext({
+      sourceMessage: String(floor.message.message || '').replace(/<pic[^>]*>/g, '').trim(),
+      historyEndId: floor.messageId,
+    });
     const input = q('#oair_test_prompt');
     if (input) input.value = prompt;
-    await processPromptToImage(prompt, { previewOnly: true, sourceSnapshot });
   } catch {
-    // Logged.
+    // Already logged by generatePromptByScriptContext.
   }
 }
 
@@ -2409,7 +2485,7 @@ function makeUi() {
   });
   bindDom('#oair_btn_test', 'click', () => runWithButtonBusy('#oair_btn_test', '生成中...', runImageTest));
   bindDom('#oair_btn_context_prompt', 'click', () => runWithButtonBusy('#oair_btn_context_prompt', '整理中...', runContextPromptOnly));
-  bindDom('#oair_btn_context_image', 'click', () => runWithButtonBusy('#oair_btn_context_image', '生成中...', runContextThenImage));
+  bindDom('#oair_btn_extract_prompt', 'click', () => runWithButtonBusy('#oair_btn_extract_prompt', '提取中...', runExtractPromptFromMessage));
   bindDom('#oair_gallery_refresh', 'click', event => {
     event.preventDefault();
     event.stopPropagation();
@@ -2455,7 +2531,7 @@ export async function init() {
   const onPageHide = () => destroy('pagehide');
   window.addEventListener('pagehide', onPageHide, { once: true });
   state.disposers.push(() => window.removeEventListener('pagehide', onPageHide));
-  W[NS] = { state, destroy, open: () => setPanelVisible(true), close: () => setPanelVisible(false), runImageTest, generatePromptFromContext, processPromptToImage, matchReferenceCharacters, exportReferenceLibrary };
+  W[NS] = { state, destroy, open: () => setPanelVisible(true), close: () => setPanelVisible(false), runImageTest, runExtractPromptFromMessage, generatePromptFromContext, processPromptToImage, matchReferenceCharacters, exportReferenceLibrary };
 
   await refreshReferenceImages();
 

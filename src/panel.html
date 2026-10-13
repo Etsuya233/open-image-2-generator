@@ -177,6 +177,10 @@
   <div class="oair-section" data-oair-section="gallery">
     <div class="oair-section-title">5. 生图测试</div>
     <div class="oair-field">
+      <label>聊天楼层（留空 = 最后一条 assistant 消息）</label>
+      <input id="oair_test_message" type="number" min="0" step="1" placeholder="楼层号从 0 开始">
+    </div>
+    <div class="oair-field">
       <label>要发送给后端的提示词</label>
       <textarea id="oair_test_prompt" rows="3" placeholder="要发送给图片后端的提示词..."></textarea>
     </div>
@@ -184,7 +188,7 @@
       <button id="oair_btn_save" class="oair-btn" type="button">保存设置</button>
       <button id="oair_btn_test" class="oair-btn" type="button">运行生图测试</button>
       <button id="oair_btn_context_prompt" class="oair-btn secondary" type="button">从上下文生成提示词</button>
-      <button id="oair_btn_context_image" class="oair-btn secondary" type="button">上下文生成并生图</button>
+      <button id="oair_btn_extract_prompt" class="oair-btn secondary" type="button">从上下文中提取提示词</button>
     </div>
   </div>
 
