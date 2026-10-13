@@ -1,7 +1,9 @@
 # open-image-2-generator
 
-A single TavernHelper / JS-Slash-Runner script for SillyTavern, kept in `open_image2_character_reference.json`.
-`README.md` covers what it does, the local dev layout, and how to import it.
+A native SillyTavern UI extension. `index.js` loads the modules in `src/`; `style.css` holds the UI styles.
+`README.md` covers installation, migration, and the local development junction.
+Edit the extension sources directly; `open_image2_character_reference.json` is the archived TavernHelper version.
+The extension uses ST native APIs and must run without TavernHelper. Local source edits take effect after a page refresh.
 
 ## link/ is a window into the real repos
 

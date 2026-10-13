@@ -1,0 +1,301 @@
+<div class="oair-settings-ui">
+  <div class="oair-head">
+    <div>
+      <div class="oair-title">image2 角色参考图增强版</div>
+      <div id="oair_status">就绪</div>
+    </div>
+    <div class="oair-row">
+      <span id="oair_elapsed">耗时：-</span>
+      <label class="oair-check"><input data-oair-setting="enabled" type="checkbox">启用</label>
+      <button class="oair-btn secondary" id="oair_btn_close" type="button">关闭</button>
+    </div>
+  </div>
+
+  <div class="oair-tabs" role="tablist" aria-label="image2 功能页面">
+    <button class="oair-tab active" data-oair-tab="main" role="tab" aria-selected="true" type="button">生图与设置</button>
+    <button class="oair-tab" data-oair-tab="references" role="tab" aria-selected="false" type="button">角色参考图库</button>
+  </div>
+
+  <div data-oair-tab-pane="main">
+  <div class="oair-section" data-oair-section="main-prompt">
+    <div class="oair-section-title">1. 主模型提示注入</div>
+    <label class="oair-check"><input data-oair-setting="injectMainPrompt" type="checkbox">正常对话前自动注入 image2 规则</label>
+    <label class="oair-check"><input data-oair-setting="processAssistantMessages" type="checkbox">监听 assistant 回复并自动生图</label>
+    <label class="oair-check"><input data-oair-setting="autoFallbackWhenNoPic" type="checkbox">没有 &lt;pic&gt; 标签时自动补救生成提示词</label>
+    <label class="oair-check"><input data-oair-setting="removePicTag" type="checkbox">提取后移除 &lt;pic&gt; 标签</label>
+    <label class="oair-check"><input data-oair-setting="appendImageToMessage" type="checkbox">生成成功后写回当前聊天楼层</label>
+    <label class="oair-check"><input data-oair-setting="inlineBase64ChatImage" type="checkbox">base64 图片使用轻量回显，避免写入超长聊天文本</label>
+    <label class="oair-check"><input data-oair-setting="keepGalleryCopy" type="checkbox">自动生成结果保留到图库</label>
+    <div class="oair-field">
+      <label>世界书式默认提示词</label>
+      <textarea data-oair-setting="mainPrompt" rows="12" placeholder="这里的内容会在生成前注入给主模型。"></textarea>
+    </div>
+    <div class="oair-btn-row">
+      <button id="oair_btn_reset_main_prompt" class="oair-btn secondary" type="button">恢复默认注入规则</button>
+    </div>
+    <div class="oair-help">这段文字只注入正常对话主模型，让它在正文末尾输出一条安全的 &lt;pic prompt="..."&gt;。不会发送给 image2 图片后端。</div>
+  </div>
+
+  <div class="oair-section" data-oair-section="image-backend">
+    <div class="oair-section-title">2. 图片后端配置</div>
+    <div class="oair-field">
+      <label>服务地址</label>
+      <input data-oair-setting="serviceUrl" placeholder="http://127.0.0.1:8199/v1/images/generations">
+    </div>
+    <div class="oair-grid-2">
+      <div class="oair-field">
+        <label>API 密钥</label>
+        <input data-oair-setting="apiKey" placeholder="sk-any">
+      </div>
+      <div class="oair-field">
+        <label>模型</label>
+        <input data-oair-setting="model" placeholder="any">
+      </div>
+    </div>
+    <div class="oair-field">
+      <label>超时（毫秒）</label>
+      <input data-oair-setting="timeoutMs" type="number" min="1000" step="1000">
+    </div>
+    <label class="oair-check"><input data-oair-setting="normalizeImagePrompt" type="checkbox">发送前仅做长度压缩和安全前缀追加</label>
+    <div class="oair-grid-2">
+      <div class="oair-field">
+        <label>发送给后端的最长 prompt 字符数</label>
+        <input data-oair-setting="maxImagePromptChars" type="number" min="0" step="20">
+      </div>
+      <div class="oair-field">
+        <label>图片安全前缀</label>
+        <input data-oair-setting="imageSafetyPrefix" placeholder="留空推荐">
+      </div>
+    </div>
+    <div class="oair-grid-2">
+      <div class="oair-field">
+        <label>图片数量 n</label>
+        <input data-oair-setting="imageN" type="number" min="1" step="1">
+      </div>
+      <div class="oair-field">
+        <label>图片尺寸 size</label>
+        <input data-oair-setting="imageSize" placeholder="1024x1024">
+      </div>
+    </div>
+    <div class="oair-grid-3">
+      <div class="oair-field">
+        <label>最大请求次数</label>
+        <input data-oair-setting="retryMaxAttempts" type="number" min="1" step="1">
+      </div>
+      <div class="oair-field">
+        <label>重试间隔（毫秒）</label>
+        <input data-oair-setting="retryDelayMs" type="number" min="0" step="1000">
+      </div>
+      <div class="oair-field">
+        <label>重试状态码</label>
+        <input data-oair-setting="retryStatuses" placeholder="429,500,502,503,504">
+      </div>
+    </div>
+    <div class="oair-field">
+      <label>发送给图片后端的模板</label>
+      <textarea data-oair-setting="promptTemplate" rows="3" placeholder="在需要插入提取内容的位置使用 {{prompt}}。"></textarea>
+    </div>
+    <div class="oair-field">
+      <label>额外请求体 JSON（可选）</label>
+      <textarea data-oair-setting="extraBody" rows="3" placeholder='{"size":"1024x1024"}'></textarea>
+    </div>
+    <div class="oair-help">如果服务地址包含 /chat/completions，脚本会自动用 messages 请求体；否则用 images/generations 的 prompt 请求体。返回会优先解析 data/media/url/b64_json，再用下面的图片正则回退。</div>
+  </div>
+
+  <div class="oair-section" data-oair-section="extraction">
+    <div class="oair-section-title">3. 提取与替换</div>
+    <div class="oair-field">
+      <label>提取提示词正则</label>
+      <textarea data-oair-setting="extractionRegex" rows="3" placeholder='/&lt;pic[^&gt;]*prompt="([^"]+)"[^&gt;]*&gt;/g'></textarea>
+    </div>
+    <div class="oair-field">
+      <label>返回图片正则回退</label>
+      <textarea data-oair-setting="responseImageRegex" rows="2" placeholder='/!\\[[^\\]]*\\]\\(([^)\\s]+)\\)/g'></textarea>
+    </div>
+  </div>
+
+  <div class="oair-section" data-oair-section="context-prompt">
+    <div class="oair-section-title">4. 从上下文整理提示词（可选）</div>
+    <div class="oair-field">
+      <label>整理规则</label>
+      <textarea data-oair-setting="summaryPrompt" rows="7"></textarea>
+    </div>
+    <div class="oair-field">
+      <label>无标签补救规则</label>
+      <textarea data-oair-setting="fallbackPrompt" rows="8"></textarea>
+    </div>
+    <div class="oair-grid-3">
+      <div class="oair-field">
+        <label>提示词生成 API</label>
+        <select data-oair-setting="summaryApiMode">
+          <option value="tavern">酒馆当前连接</option>
+          <option value="proxy">酒馆代理预设</option>
+          <option value="custom">额外 API</option>
+        </select>
+      </div>
+      <div class="oair-field">
+        <label>代理预设名</label>
+        <input data-oair-setting="summaryProxyPreset" placeholder="MyProxy">
+      </div>
+      <div class="oair-field">
+        <label>模型覆盖</label>
+        <input data-oair-setting="summaryModel" placeholder="留空则不覆盖">
+      </div>
+    </div>
+    <div class="oair-grid-2">
+      <div class="oair-field">
+        <label>额外 API 地址</label>
+        <input data-oair-setting="summaryApiUrl" placeholder="https://api.example.com/v1">
+      </div>
+      <div class="oair-field">
+        <label>额外 API 密钥</label>
+        <input data-oair-setting="summaryApiKey" placeholder="sk-...">
+      </div>
+    </div>
+    <div class="oair-grid-3">
+      <div class="oair-field">
+        <label>API source</label>
+        <input data-oair-setting="summarySource" placeholder="openai">
+      </div>
+      <div class="oair-field">
+        <label>聊天历史条数</label>
+        <input data-oair-setting="summaryMaxChatHistory" type="number" min="1" step="1">
+      </div>
+      <div class="oair-field">
+        <label>世界书条目上限</label>
+        <input data-oair-setting="summaryWorldbookEntryLimit" type="number" min="0" step="1">
+      </div>
+    </div>
+    <label class="oair-check"><input data-oair-setting="summaryIncludeWorldbooks" type="checkbox">读取当前绑定世界书片段</label>
+    <label class="oair-check"><input data-oair-setting="summaryIncludeVariables" type="checkbox">读取聊天变量（可能包含敏感信息）</label>
+    <div class="oair-btn-row">
+      <button id="oair_btn_reset_summary_rules" class="oair-btn secondary" type="button">恢复默认整理/补救规则</button>
+    </div>
+    <div class="oair-help">这里使用自定义提示词和读取到的上下文，不直接套用当前酒馆预设。</div>
+  </div>
+
+  <div class="oair-section" data-oair-section="gallery">
+    <div class="oair-section-title">5. 测试与图库 <span class="oair-badge" id="oair_gallery_count">0</span></div>
+    <div class="oair-field">
+      <label>要发送给后端的提示词</label>
+      <textarea id="oair_test_prompt" rows="3" placeholder="要发送给图片后端的提示词..."></textarea>
+    </div>
+    <div class="oair-btn-row">
+      <button id="oair_btn_save" class="oair-btn" type="button">保存设置</button>
+      <button id="oair_btn_test" class="oair-btn" type="button">运行生图测试</button>
+      <button id="oair_btn_context_prompt" class="oair-btn secondary" type="button">从上下文生成提示词</button>
+      <button id="oair_btn_context_image" class="oair-btn secondary" type="button">上下文生成并生图</button>
+      <button id="oair_btn_clear_preview" class="oair-btn secondary" type="button">清空图库</button>
+    </div>
+    <div id="oair_test_preview"></div>
+  </div>
+
+  <div class="oair-section" data-oair-section="steps">
+    <div class="oair-section-title">6. 状态步骤</div>
+    <div id="oair_steps"></div>
+  </div>
+
+  <div class="oair-section" data-oair-section="logs">
+    <div class="oair-section-title">7. 日志</div>
+    <div class="oair-btn-row">
+      <button id="oair_btn_clear_log" class="oair-btn secondary" type="button">清空日志</button>
+      <button id="oair_btn_copy_log" class="oair-btn secondary" type="button">复制日志</button>
+    </div>
+    <div id="oair_log_list"></div>
+  </div>
+  </div>
+
+  <div data-oair-tab-pane="references" hidden>
+    <div class="oair-section" data-oair-section="reference-settings">
+      <div class="oair-section-title">图生图参考调用</div>
+      <label class="oair-check"><input data-oair-setting="referenceEnabled" type="checkbox">检测提示词中的角色名并自动附加参考图</label>
+      <label class="oair-check"><input data-oair-setting="referenceCaseSensitive" type="checkbox">角色名匹配区分大小写</label>
+      <div class="oair-grid-2">
+        <div class="oair-field">
+          <label>参考图请求模式</label>
+          <select data-oair-setting="referenceRequestMode">
+            <option value="auto">自动判断</option>
+            <option value="multipart-edit">Multipart /images/edits</option>
+            <option value="chat-multimodal">Chat 多模态 image_url</option>
+            <option value="json-reference">JSON 参考图字段</option>
+          </select>
+        </div>
+        <div class="oair-field">
+          <label>多模态图片 detail</label>
+          <select data-oair-setting="referenceImageDetail">
+            <option value="high">high</option>
+            <option value="auto">auto</option>
+            <option value="low">low</option>
+          </select>
+        </div>
+      </div>
+      <div class="oair-field">
+        <label>图生图专用服务地址（留空沿用普通服务地址）</label>
+        <input data-oair-setting="referenceServiceUrl" placeholder="例如 http://127.0.0.1:8199/v1/images/edits">
+      </div>
+      <div class="oair-grid-2">
+        <div class="oair-field">
+          <label>JSON 参考图字段名</label>
+          <input data-oair-setting="referenceJsonField" placeholder="images">
+        </div>
+        <div class="oair-field">
+          <label>最多匹配角色数</label>
+          <input data-oair-setting="referenceMaxCharacters" type="number" min="1" max="8" step="1">
+        </div>
+      </div>
+      <div class="oair-grid-2">
+        <div class="oair-field">
+          <label>每角色最多参考图数</label>
+          <input data-oair-setting="referenceImagesPerCharacter" type="number" min="1" max="8" step="1">
+        </div>
+        <div class="oair-field">
+          <label>单图上限（MB）</label>
+          <input data-oair-setting="referenceMaxImageMB" type="number" min="1" max="32" step="1">
+        </div>
+      </div>
+      <div class="oair-field">
+        <label>压缩后的最长边（像素）</label>
+        <input data-oair-setting="referenceMaxDimension" type="number" min="512" max="4096" step="128">
+      </div>
+      <div class="oair-field">
+        <label>图生图专用提示词模板</label>
+        <textarea data-oair-setting="referencePromptTemplate" rows="8" placeholder="支持 {{prompt}}、{{characters}}、{{reference_count}}、{{reference_notes}}。"></textarea>
+      </div>
+      <div class="oair-btn-row">
+        <button id="oair_btn_save_reference_settings" class="oair-btn" type="button">保存图生图设置</button>
+        <button id="oair_btn_reset_reference_prompt" class="oair-btn secondary" type="button">恢复图生图模板</button>
+      </div>
+      <div class="oair-help">自动模式会根据图生图专用地址判断：/images/edits 使用 multipart，/chat/completions 使用多模态，其余使用可配置的 JSON 字段。没有命中角色时仍按原文生图方式请求。</div>
+    </div>
+
+    <div class="oair-section" data-oair-section="reference-create">
+      <div class="oair-section-title">新建角色参考区</div>
+      <div class="oair-grid-2">
+        <div class="oair-field">
+          <label>角色名</label>
+          <input id="oair_reference_new_name" placeholder="例如：林月">
+        </div>
+        <div class="oair-field">
+          <label>别名（逗号分隔）</label>
+          <input id="oair_reference_new_aliases" placeholder="例如：月月, Lin Yue">
+        </div>
+      </div>
+      <div class="oair-btn-row">
+        <button id="oair_btn_add_reference_character" class="oair-btn" type="button">新建角色</button>
+        <button id="oair_btn_import_reference_library" class="oair-btn secondary" type="button">导入图库</button>
+        <button id="oair_btn_export_reference_library" class="oair-btn secondary" type="button">导出全部</button>
+        <input id="oair_reference_import_file" type="file" accept="application/json,.json" hidden>
+      </div>
+    </div>
+
+    <div class="oair-section" data-oair-section="reference-preview">
+      <div class="oair-section-title">匹配预览</div>
+      <div id="oair_reference_match_preview"></div>
+    </div>
+
+    <div class="oair-section" data-oair-section="reference-library">
+      <div class="oair-section-title">角色参考区 <span class="oair-badge" id="oair_reference_character_count">0</span></div>
+      <div id="oair_reference_character_list" class="oair-reference-list"></div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,8 @@
+{
+  "name": "open-image-2-generator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check index.js && node --check src/main.js && node --check src/defaults.js && node --check src/tavern.js"
+  }
+}
