@@ -23,3 +23,8 @@ __pycache__/
 # Secrets / local env
 .env
 .env.local
+
+# Custom
+tmp/
+worktree/
+link/
