@@ -63,7 +63,17 @@ D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
 
 提示词整理支持酒馆当前连接、ST 反向代理预设和独立 API。当前连接使用 ST 原生生成接口，覆盖模型时使用聊天补全连接；独立 API 与反向代理通过 ST 聊天补全后端发送请求。
 
-设置存储于 `extensionSettings.open_image_2_generator`，参考图片存储于 IndexedDB `oair_image2_character_reference_v1`，标题折叠状态存储于 localStorage `oair_image2_character_reference_collapsed_sections_v1`。
+设置存储于 `extensionSettings.open_image_2_generator`，参考图片存储于 IndexedDB `oair_image2_character_reference_v1`，标题折叠状态存储于 localStorage `oair_image2_character_reference_collapsed_sections_v1`，面板拖拽位置存储于 localStorage `oair_image2_character_reference_panel_position_v1`，面板尺寸存储于 localStorage `oair_image2_character_reference_panel_size_v1`。
+
+## 面板布局
+
+面板标题栏固定在窗口顶部，滚动内容时始终可见。
+
+窗口尺寸固定，默认宽 `min(900px, 100vw - 24px)`、高 `min(780px, 100vh - 80px)`，内容在窗口内滚动，所以切换 Tab（含图库）不会改变窗口宽高。
+
+移动端（走酒馆的 `isMobile()` 判断，或窗口宽度不超过 1000px）忽略上面的尺寸并铺满屏幕，上边界贴 `#top-bar` 底边、下边界贴底栏顶部，高度按这两条栏位实时测量，不使用 `dvh`，所以不会顶到 iPhone 状态栏。自定义酒馆换了栏位 id 时，脚本按 `send-form`、`send_form`、`form_sheld` 的顺序取第一个可见元素，都没找到则退回 `env(safe-area-inset-*)`。
+
+大屏按住标题栏可拖动窗口位置，拖动右边、下边或右下角可调整窗口大小（最小 320×240，最大不超过视口）。位置和尺寸写在上面的两个键里，超出可视范围的数值会在窗口尺寸变化时自动收进屏幕。
 
 ## 关联源码
 

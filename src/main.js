@@ -4,6 +4,8 @@ import { defaultSettings, DEFAULT_MAIN_PROMPT, DEFAULT_CONTEXT_PROMPT, DEFAULT_F
 
 const NS = 'OAIRImage2CharacterReference';
 const SECTION_STATE_KEY = 'oair_image2_character_reference_collapsed_sections_v1';
+const PANEL_POSITION_KEY = 'oair_image2_character_reference_panel_position_v1';
+const PANEL_SIZE_KEY = 'oair_image2_character_reference_panel_size_v1';
 const INJECT_ID = 'oair-image2-character-reference-main-prompt';
 const REFERENCE_DB_NAME = 'oair_image2_character_reference_v1';
 const REFERENCE_DB_STORE = 'reference_images';
@@ -30,6 +32,8 @@ const state = {
   activeTab: 'main',
   referenceDb: null,
   referenceImages: new Map(),
+  panelPosition: null,
+  panelSize: null,
 };
 
 const W = window;
@@ -1980,6 +1984,290 @@ function switchPanelTab(tabName) {
 function setPanelVisible(visible) {
   if (!state.panel) return;
   state.panel.hidden = !visible;
+  if (visible) syncPanelLayout();
+}
+
+// 自定义酒馆可能换掉了栏位 id，按常见顺序取第一个真正占位的元素。
+const TAVERN_BOTTOM_BAR_IDS = ['send-form', 'send_form', 'form_sheld'];
+const PANEL_MIN_WIDTH = 320;
+const PANEL_MIN_HEIGHT = 240;
+
+// 与酒馆自身的移动端判断保持一致；拿不到 isMobile 时退回窗口宽度。
+function useFullscreenPanelLayout() {
+  const win = state.uiWindow || W;
+  let stMobile = null;
+  try {
+    const isMobile = SillyTavern.getContext().isMobile;
+    if (typeof isMobile === 'function') stMobile = Boolean(isMobile());
+  } catch {
+    stMobile = null;
+  }
+  const narrow = win.matchMedia?.('(max-width: 1000px)').matches ?? win.innerWidth <= 1000;
+  return stMobile === null ? narrow : stMobile || narrow;
+}
+
+function measureTavernBarSpace() {
+  const doc = uiDoc();
+  const win = state.uiWindow || W;
+  const topBar = doc.getElementById('top-bar');
+  const top = topBar ? Math.max(0, topBar.getBoundingClientRect().bottom) : 0;
+  let bottom = 0;
+  for (const id of TAVERN_BOTTOM_BAR_IDS) {
+    const bar = doc.getElementById(id);
+    if (!bar) continue;
+    const rect = bar.getBoundingClientRect();
+    if (rect.height <= 0) continue;
+    bottom = Math.max(0, win.innerHeight - rect.top);
+    break;
+  }
+  return { top, bottom };
+}
+
+function clampPanelPosition(position) {
+  const win = state.uiWindow || W;
+  const rect = state.panel?.getBoundingClientRect();
+  const width = rect?.width ?? 0;
+  const height = rect?.height ?? 0;
+  // 面板隐藏时没有布局盒，此时保留原坐标，等显示后再校正。
+  if (!width || !height) return position;
+  return {
+    left: Math.min(Math.max(position.left, 0), Math.max(0, win.innerWidth - width)),
+    top: Math.min(Math.max(position.top, 0), Math.max(0, win.innerHeight - height)),
+  };
+}
+
+function clampPanelSize(size, bounds) {
+  const win = state.uiWindow || W;
+  // bounds 用来限制“向右/向下最多能长到哪”，避免缩放结束后面板被位置夹取推回左边。
+  const maxWidth = bounds?.width ?? win.innerWidth;
+  const maxHeight = bounds?.height ?? win.innerHeight;
+  return {
+    width: Math.min(Math.max(size.width, PANEL_MIN_WIDTH), Math.max(PANEL_MIN_WIDTH, maxWidth)),
+    height: Math.min(Math.max(size.height, PANEL_MIN_HEIGHT), Math.max(PANEL_MIN_HEIGHT, maxHeight)),
+  };
+}
+
+function applyPanelSize() {
+  const panel = state.panel;
+  if (!panel) return;
+  if (!state.panelSize) {
+    panel.style.width = '';
+    panel.style.height = '';
+    return;
+  }
+  // 只约束实际写入的尺寸，视口变大后仍回到用户设定的值。
+  const size = clampPanelSize(state.panelSize);
+  panel.style.width = `${size.width}px`;
+  panel.style.height = `${size.height}px`;
+}
+
+function syncPanelLayout() {
+  const panel = state.panel;
+  if (!panel) return;
+  if (useFullscreenPanelLayout()) {
+    const { top, bottom } = measureTavernBarSpace();
+    panel.classList.add('oair-panel-fullscreen');
+    panel.classList.remove('oair-panel-moved');
+    panel.style.left = '';
+    panel.style.top = top > 0 ? `${top}px` : '';
+    panel.style.bottom = bottom > 0 ? `${bottom}px` : '';
+    // 铺满尺寸由 top/bottom 决定，清掉拖拽留下的宽高。
+    panel.style.width = '';
+    panel.style.height = '';
+    return;
+  }
+  panel.classList.remove('oair-panel-fullscreen');
+  panel.style.bottom = '';
+  applyPanelSize();
+  if (!state.panelPosition) {
+    panel.classList.remove('oair-panel-moved');
+    panel.style.left = '';
+    panel.style.top = '';
+    return;
+  }
+  // 视口变化时只约束实际写入的坐标，保留用户拖拽出来的值。
+  const position = clampPanelPosition(state.panelPosition);
+  panel.classList.add('oair-panel-moved');
+  panel.style.left = `${position.left}px`;
+  panel.style.top = `${position.top}px`;
+}
+
+// 启动按钮固定定位按布局视口计算，这里补上浏览器底栏或软键盘遮住的部分，保持按钮可见。
+function syncLauncherPosition() {
+  const launcher = state.launcher;
+  if (!launcher) return;
+  const win = state.uiWindow || W;
+  const viewport = win.visualViewport;
+  const occluded = viewport ? Math.max(0, win.innerHeight - viewport.height - viewport.offsetTop) : 0;
+  launcher.style.bottom = `calc(${16 + occluded}px + env(safe-area-inset-bottom, 0px))`;
+}
+
+function readStoredPanelPosition() {
+  try {
+    const saved = JSON.parse((state.uiWindow || W).localStorage.getItem(PANEL_POSITION_KEY) || 'null');
+    if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+      return { left: saved.left, top: saved.top };
+    }
+  } catch {
+    // 坐标记录损坏时忽略，回到居中布局。
+  }
+  return null;
+}
+
+function readStoredPanelSize() {
+  try {
+    const saved = JSON.parse((state.uiWindow || W).localStorage.getItem(PANEL_SIZE_KEY) || 'null');
+    if (saved && Number.isFinite(saved.width) && Number.isFinite(saved.height)) {
+      return { width: saved.width, height: saved.height };
+    }
+  } catch {
+    // 尺寸记录损坏时忽略，使用样式里的默认尺寸。
+  }
+  return null;
+}
+
+function persistPanelLayout() {
+  const win = state.uiWindow || W;
+  try {
+    win.localStorage.setItem(PANEL_POSITION_KEY, JSON.stringify(state.panelPosition));
+    win.localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(state.panelSize));
+  } catch {
+    // 存储不可用时仅本次会话内保持布局。
+  }
+}
+
+function enablePanelResize() {
+  const panel = state.panel;
+  const win = state.uiWindow || W;
+  let resize = null;
+
+  const resizePanel = (width, height) => {
+    const rect = panel.getBoundingClientRect();
+    state.panelSize = clampPanelSize({ width, height }, {
+      width: win.innerWidth - rect.left,
+      height: win.innerHeight - rect.top,
+    });
+    panel.style.width = `${state.panelSize.width}px`;
+    panel.style.height = `${state.panelSize.height}px`;
+  };
+  // 居中布局下缩放会让左右两边一起动，这里先把左上角定住。
+  const pinTopLeft = () => {
+    const rect = panel.getBoundingClientRect();
+    state.panelPosition = clampPanelPosition({ left: rect.left, top: rect.top });
+    panel.classList.add('oair-panel-moved');
+    panel.style.left = `${state.panelPosition.left}px`;
+    panel.style.top = `${state.panelPosition.top}px`;
+    panel.style.bottom = '';
+  };
+
+  for (const handle of panel.querySelectorAll('.oair-resize')) {
+    const axis = handle.dataset.resize;
+    const onPointerDown = event => {
+      if (event.button !== 0 || event.isPrimary === false || useFullscreenPanelLayout()) return;
+      const rect = panel.getBoundingClientRect();
+      resize = { axis, width: rect.width, height: rect.height, x: event.clientX, y: event.clientY };
+      pinTopLeft();
+      handle.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    };
+    const onPointerMove = event => {
+      if (!resize) return;
+      resizePanel(
+        resize.axis.includes('e') ? resize.width + event.clientX - resize.x : resize.width,
+        resize.axis.includes('s') ? resize.height + event.clientY - resize.y : resize.height,
+      );
+    };
+    const onPointerUp = () => {
+      if (!resize) return;
+      resize = null;
+      persistPanelLayout();
+      syncPanelLayout();
+    };
+
+    handle.addEventListener('pointerdown', onPointerDown);
+    win.addEventListener('pointermove', onPointerMove);
+    win.addEventListener('pointerup', onPointerUp);
+    win.addEventListener('pointercancel', onPointerUp);
+    state.disposers.push(() => {
+      handle.removeEventListener('pointerdown', onPointerDown);
+      win.removeEventListener('pointermove', onPointerMove);
+      win.removeEventListener('pointerup', onPointerUp);
+      win.removeEventListener('pointercancel', onPointerUp);
+    });
+  }
+}
+
+function enablePanelDrag() {
+  const panel = state.panel;
+  const win = state.uiWindow || W;
+  const handle = panel?.querySelector('.oair-head');
+  if (!handle) return;
+  let drag = null;
+
+  const movePanel = (left, top) => {
+    state.panelPosition = clampPanelPosition({ left, top });
+    panel.classList.add('oair-panel-moved');
+    panel.style.left = `${state.panelPosition.left}px`;
+    panel.style.top = `${state.panelPosition.top}px`;
+    panel.style.bottom = '';
+  };
+  const onPointerDown = event => {
+    if (event.button !== 0 || event.isPrimary === false || useFullscreenPanelLayout()) return;
+    if (event.target.closest('button, input, label, select, textarea, a')) return;
+    const rect = panel.getBoundingClientRect();
+    drag = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    movePanel(rect.left, rect.top);
+    handle.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  };
+  const onPointerMove = event => {
+    if (!drag) return;
+    movePanel(event.clientX - drag.x, event.clientY - drag.y);
+  };
+  const onPointerUp = () => {
+    if (!drag) return;
+    drag = null;
+    persistPanelLayout();
+  };
+
+  handle.addEventListener('pointerdown', onPointerDown);
+  win.addEventListener('pointermove', onPointerMove);
+  win.addEventListener('pointerup', onPointerUp);
+  win.addEventListener('pointercancel', onPointerUp);
+  state.disposers.push(() => {
+    handle.removeEventListener('pointerdown', onPointerDown);
+    win.removeEventListener('pointermove', onPointerMove);
+    win.removeEventListener('pointerup', onPointerUp);
+    win.removeEventListener('pointercancel', onPointerUp);
+  });
+}
+
+function bindPanelLayout() {
+  const win = state.uiWindow || W;
+  let queued = false;
+  const syncLayout = () => {
+    syncPanelLayout();
+    syncLauncherPosition();
+  };
+  const queueSync = () => {
+    if (queued) return;
+    queued = true;
+    (win.requestAnimationFrame || (callback => callback()))(() => {
+      queued = false;
+      syncLayout();
+    });
+  };
+  syncLayout();
+  win.addEventListener('resize', queueSync);
+  win.addEventListener('orientationchange', queueSync);
+  win.visualViewport?.addEventListener('resize', queueSync);
+  win.visualViewport?.addEventListener('scroll', queueSync);
+  state.disposers.push(() => {
+    win.removeEventListener('resize', queueSync);
+    win.removeEventListener('orientationchange', queueSync);
+    win.visualViewport?.removeEventListener('resize', queueSync);
+    win.visualViewport?.removeEventListener('scroll', queueSync);
+  });
 }
 
 function bindDom(selector, event, handler) {
@@ -2054,6 +2342,11 @@ function makeUi() {
   });
   doc.body.appendChild(panel);
   state.panel = panel;
+  state.panelPosition = readStoredPanelPosition();
+  state.panelSize = readStoredPanelSize();
+  enablePanelDrag();
+  enablePanelResize();
+  bindPanelLayout();
   generatedGallery = createGallery(panel, { openLightbox: openImageLightbox });
 
   writeSettingsToUi();

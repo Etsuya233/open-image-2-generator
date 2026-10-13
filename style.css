@@ -1,8 +1,7 @@
 #oair_launcher {
   position: fixed;
   right: 16px;
-  top: calc(100dvh - 16px);
-  transform: translateY(-100%);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   border: 1px solid rgba(255,255,255,.22);
   background: rgba(18, 24, 32, .94);
@@ -14,13 +13,12 @@
 }
 #oair_panel {
   position: fixed;
-  right: 16px;
-  top: calc(100dvh - 52px);
-  transform: translateY(-100%);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 9999;
-  width: min(680px, calc(100vw - 24px));
-  max-height: min(780px, calc(100vh - 80px));
-  overflow: auto;
+  width: min(900px, calc(100vw - 24px));
+  height: min(780px, calc(100vh - 80px));
   color: #e9eef5;
   background: rgba(15, 18, 24, .98);
   border: 1px solid rgba(255,255,255,.16);
@@ -28,10 +26,34 @@
   box-shadow: 0 12px 36px rgba(0,0,0,.45);
   font-size: 13px;
 }
-/* 图库是图片墙，窄了没意义，切到这个 Tab 时放宽容器 */
-#oair_panel[data-oair-tab="gallery"] { width: min(1040px, calc(100vw - 24px)); }
+/* 内容在固定尺寸的窗口内滚动，切换 Tab 不改变窗口大小 */
+.oair-panel-body { height: 100%; overflow: auto; border-radius: inherit; overscroll-behavior: contain; }
+/* 拖拽窗口后改用 left/top 像素定位，取消居中偏移 */
+#oair_panel.oair-panel-moved { transform: none; }
+/* 移动端铺满：上下边界由脚本按酒馆顶栏/底栏位置写入；没测到栏位时退回 env() 安全区 */
+#oair_panel.oair-panel-fullscreen {
+  left: 0;
+  right: 0;
+  top: env(safe-area-inset-top, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
+  width: auto;
+  height: auto;
+  max-height: none;
+  transform: none;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  box-shadow: none;
+}
+/* 大屏可拖拽调整窗口大小；拖拽条压在面板外沿，只往内伸 4px，避免抢走滚动条和标题栏按钮的点击 */
+.oair-resize { position: absolute; z-index: 8; }
+.oair-resize[data-resize="e"] { top: 0; right: -10px; width: 14px; height: 100%; cursor: ew-resize; }
+.oair-resize[data-resize="s"] { left: 0; bottom: -10px; width: 100%; height: 14px; cursor: ns-resize; }
+.oair-resize[data-resize="se"] { right: -14px; bottom: -14px; width: 18px; height: 18px; cursor: nwse-resize; touch-action: none; }
+.oair-resize[data-resize="se"]::after { content: ''; position: absolute; right: 16px; bottom: 16px; width: 7px; height: 7px; border-right: 2px solid rgba(233,238,245,.42); border-bottom: 2px solid rgba(233,238,245,.42); }
+#oair_panel.oair-panel-fullscreen .oair-resize { display: none; }
 #oair_panel * { box-sizing: border-box; }
-.oair-settings-ui { padding: 12px; display: grid; gap: 10px; }
+.oair-settings-ui { padding: 0 12px 12px; display: grid; gap: 10px; }
 [data-oair-tab-pane] { display:grid; gap:10px; }
 [data-oair-tab-pane][hidden] { display:none !important; }
 .oair-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
@@ -45,7 +67,22 @@
   font:inherit;
 }
 .oair-tab.active { color:#fff; background:rgba(82,111,146,.82); border-color:rgba(137,190,238,.5); }
-.oair-head { display:flex; justify-content:space-between; align-items:center; gap:8px; border-bottom:1px solid rgba(255,255,255,.12); padding-bottom:8px; }
+.oair-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -12px;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  background: rgba(15, 18, 24, .98);
+  user-select: none;
+}
+/* 大屏可拖拽顶栏移动窗口；移动端铺满屏幕时该栏只做标题栏 */
+#oair_panel:not(.oair-panel-fullscreen) .oair-head { cursor: move; touch-action: none; }
 .oair-title { font-weight: 700; }
 #oair_status[data-level="ok"] { color: #76e39b; }
 #oair_status[data-level="running"] { color: #6cc8ff; }
@@ -112,11 +149,12 @@
 #oair_lightbox {
   position: fixed;
   inset: 0;
-  height: 100dvh;
   z-index: 10000;
   display: grid;
   place-items: center;
   padding: 18px;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   overflow: auto;
   background: rgba(0,0,0,.78);
 }
@@ -176,7 +214,13 @@
   line-height: 1.45;
 }
 @media (max-width: 900px) {
-  #oair_lightbox { padding:8px; place-items:stretch; grid-template-rows:minmax(0,1fr); }
+  #oair_lightbox {
+    padding:8px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    place-items:stretch;
+    grid-template-rows:minmax(0,1fr);
+  }
   .oair-lightbox-inner { width:100%; max-height:100%; grid-template-rows:auto minmax(0,1fr); }
   .oair-lightbox-view { min-height:0; overflow:auto; }
   .oair-lightbox-view.has-meta { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr); overflow:hidden; }
@@ -204,7 +248,6 @@
 #oair_reference_match_preview { padding:8px; border-radius:5px; background:rgba(25,38,52,.72); color:#b9ddfa; font-size:12px; line-height:1.5; overflow-wrap:anywhere; }
 @media (max-width: 620px) {
   .oair-grid-2, .oair-grid-3 { grid-template-columns: 1fr; }
-  #oair_panel { right: 12px; top: calc(100dvh - 48px); }
 }
 
 #oair_generated_gallery { display:grid; gap:4px; }
