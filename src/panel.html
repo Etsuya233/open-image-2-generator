@@ -172,7 +172,7 @@
       <button id="oair_btn_edit_profiles" class="oair-btn secondary" type="button">编辑预设</button>
       <button id="oair_btn_preview_profile" class="oair-btn secondary" type="button">预览当前预设</button>
     </div>
-    <div class="oair-help">整理和补救各自选一个预设，预设决定发给 AI 的 Prompt 顺序、内容和角色。预设里可以插入角色卡、世界书激活片段、聊天记录、聊天变量和本次回复这些内置素材条目。「预览当前预设」按第 5 步的聊天楼层组装一遍消息，只看结果，不会调用 AI。</div>
+    <div class="oair-help">整理和补救各自选一个预设，预设决定发给 AI 的 Prompt 顺序、内容和角色。预设里可以插入角色卡、世界书激活片段、聊天记录、聊天变量和本次回复这些内置素材条目。「预览当前预设」按第 5 步的聊天楼层组装一遍消息，预览的是编辑器里正在选中的那个预设，只看结果，不会调用 AI。</div>
 
     <div id="oair_profile_editor" class="oair-profile-editor" hidden>
       <div class="oair-grid-2">
@@ -195,7 +195,8 @@
       </div>
       <div class="oair-prompt-list-head">
         <span>Prompt 顺序 <span id="oair_profile_entry_count" class="oair-badge">0</span></span>
-        <span class="oair-help">从上到下依次发送，每条都能单独开关并选择角色。</span>
+        <span class="oair-help">从上到下依次发送，每条都能单独开关并选择角色。左侧竖条按消息角色着色。</span>
+        <span id="oair_profile_save_state" class="oair-save-state" role="status" aria-live="polite"></span>
       </div>
       <div id="oair_profile_prompt_list" class="oair-prompt-list"></div>
       <div class="oair-btn-row">

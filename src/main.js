@@ -2137,10 +2137,18 @@ function makePromptEntryCard(entry, index, total) {
   const card = makeEl('div');
   card.className = 'oair-prompt-card';
   card.dataset.promptId = entry.id;
+  card.dataset.role = entry.role;
   card.classList.toggle('is-disabled', !entry.enabled);
 
   const head = makeEl('div');
   head.className = 'oair-prompt-head';
+
+  const order = makeEl('span');
+  order.className = 'oair-prompt-index';
+  order.textContent = String(index + 1);
+  order.title = `第 ${index + 1} 条，共 ${total} 条`;
+  head.append(order);
+
   const enable = makeEl('input');
   enable.type = 'checkbox';
   enable.checked = entry.enabled;
@@ -2155,7 +2163,7 @@ function makePromptEntryCard(entry, index, total) {
 
   if (entry.kind === 'context') {
     const name = makeEl('span');
-    name.className = 'oair-prompt-name';
+    name.className = 'oair-prompt-name oair-prompt-name-static';
     name.textContent = entry.name;
     const tag = makeEl('span');
     tag.className = 'oair-prompt-tag';
@@ -2187,44 +2195,13 @@ function makePromptEntryCard(entry, index, total) {
   role.value = entry.role;
   role.addEventListener('change', () => {
     entry.role = role.value;
+    card.dataset.role = entry.role;
     savePromptProfiles();
   });
   head.append(role);
 
-  const body = makeEl('div');
-  body.className = 'oair-prompt-body';
-  body.hidden = !state.expandedPromptEntries.has(entry.id);
-  if (entry.kind === 'context') {
-    const hint = makeEl('div');
-    hint.className = 'oair-help';
-    hint.textContent = `生成时由插件填入：${MATERIAL_SECTION_HINTS[entry.section] ?? ''}`;
-    body.append(hint);
-  } else {
-    const content = makeEl('textarea');
-    content.rows = 6;
-    content.className = 'oair-prompt-content';
-    content.value = entry.content;
-    content.placeholder = '支持酒馆宏（{{char}}、{{getvar::名字}} 等），也可以用 {{image2_context}} 插入角色卡、世界书和聊天记录、用 {{image2_reply}} 插入本次回复。';
-    content.setAttribute('aria-label', 'Prompt 内容');
-    content.addEventListener('input', () => {
-      entry.content = content.value;
-      savePromptProfiles();
-    });
-    body.append(content);
-  }
-
-  const preview = makeEl('div');
-  preview.className = 'oair-prompt-preview';
-  preview.textContent = promptEntryPreview(entry);
-
-  const toggle = makePromptAction(body.hidden ? '编辑' : '收起', 'toggle', '展开或收起这条 Prompt 的内容');
-  toggle.addEventListener('click', () => {
-    body.hidden = !body.hidden;
-    toggle.textContent = body.hidden ? '编辑' : '收起';
-    if (body.hidden) state.expandedPromptEntries.delete(entry.id);
-    else state.expandedPromptEntries.add(entry.id);
-  });
-
+  const actions = makeEl('div');
+  actions.className = 'oair-prompt-actions';
   const up = makePromptAction('↑', 'up', '上移', index === 0);
   up.addEventListener('click', () => movePromptEntry(entry.id, -1));
   const down = makePromptAction('↓', 'down', '下移', index === total - 1);
@@ -2232,12 +2209,60 @@ function makePromptEntryCard(entry, index, total) {
   const remove = makePromptAction('删除', 'delete', '删除这条 Prompt');
   remove.classList.add('danger');
   remove.addEventListener('click', () => deletePromptEntry(entry.id));
+  actions.append(up, down, remove);
 
-  const actions = makeEl('div');
-  actions.className = 'oair-prompt-actions';
-  actions.append(up, down, toggle, remove);
+  // 内置素材条目的内容由插件填入，没有可展开的正文，直接显示提示。
+  if (entry.kind === 'context') {
+    const hint = makeEl('div');
+    hint.className = 'oair-prompt-preview';
+    hint.textContent = `生成时由插件填入：${MATERIAL_SECTION_HINTS[entry.section] ?? ''}`;
+    head.append(actions);
+    card.append(head, hint);
+    return card;
+  }
 
-  card.append(head, actions, preview, body);
+  const body = makeEl('div');
+  body.className = 'oair-prompt-body';
+  body.hidden = !state.expandedPromptEntries.has(entry.id);
+
+  const content = makeEl('textarea');
+  content.rows = 6;
+  content.className = 'oair-prompt-content';
+  content.value = entry.content;
+  content.placeholder = '支持酒馆宏（{{char}}、{{getvar::名字}} 等），也可以用 {{image2_context}} 插入角色卡、世界书和聊天记录、用 {{image2_reply}} 插入本次回复。';
+  content.setAttribute('aria-label', 'Prompt 内容');
+  content.addEventListener('input', () => {
+    entry.content = content.value;
+    preview.textContent = promptEntryPreview(entry);
+    savePromptProfiles();
+  });
+  body.append(content);
+
+  const preview = makeEl('button');
+  preview.type = 'button';
+  preview.className = 'oair-prompt-preview oair-prompt-preview-toggle';
+  preview.textContent = promptEntryPreview(entry);
+  preview.title = '展开这条 Prompt 的正文';
+  preview.hidden = !body.hidden;
+
+  const toggle = makePromptAction(body.hidden ? '展开' : '收起', 'toggle', '');
+  const setExpanded = expanded => {
+    body.hidden = !expanded;
+    preview.hidden = expanded;
+    toggle.textContent = expanded ? '收起' : '展开';
+    const label = expanded ? '收起这条 Prompt 的正文' : '展开这条 Prompt 的正文';
+    toggle.title = label;
+    toggle.setAttribute('aria-label', label);
+    if (expanded) state.expandedPromptEntries.add(entry.id);
+    else state.expandedPromptEntries.delete(entry.id);
+  };
+  setExpanded(!body.hidden);
+  toggle.addEventListener('click', () => setExpanded(body.hidden));
+  preview.addEventListener('click', () => setExpanded(true));
+  actions.insertBefore(toggle, remove);
+
+  head.append(actions);
+  card.append(head, preview, body);
   return card;
 }
 
@@ -2275,12 +2300,40 @@ function renderPromptProfileEditor() {
   renderPromptProfilePickers();
 }
 
-function savePromptProfiles() {
+const PROMPT_PROFILE_SAVE_DELAY = 400;
+let promptProfileSaveTimer = null;
+
+function renderPromptProfileSaveState(text, tone = '') {
+  const el = q('#oair_profile_save_state');
+  if (!el) return;
+  el.textContent = text;
+  el.dataset.tone = tone;
+}
+
+// 编辑既改内存里的预设也改 ST 设置。输入时先标「保存中」，停顿后再落盘，避免逐键写盘。
+function savePromptProfilesNow() {
+  if (promptProfileSaveTimer !== null) {
+    clearTimeout(promptProfileSaveTimer);
+    promptProfileSaveTimer = null;
+  }
   saveSettings({ silent: true });
+  renderPromptProfileSaveState('已保存', 'ok');
+}
+
+function savePromptProfiles() {
+  renderPromptProfileSaveState('保存中…', 'pending');
+  if (promptProfileSaveTimer !== null) clearTimeout(promptProfileSaveTimer);
+  promptProfileSaveTimer = setTimeout(savePromptProfilesNow, PROMPT_PROFILE_SAVE_DELAY);
+}
+
+// 面板收起或切换到别的操作前，把还在等待的改动立刻写盘。
+function flushPromptProfiles() {
+  if (promptProfileSaveTimer === null) return;
+  savePromptProfilesNow();
 }
 
 function commitPromptProfileChange() {
-  savePromptProfiles();
+  savePromptProfilesNow();
   renderPromptProfileEditor();
   setStatus('提示词预设已保存', 'ok');
 }
@@ -2437,11 +2490,19 @@ function bindPromptProfileEditor() {
 
   bindDom('#oair_btn_edit_profiles', 'click', () => {
     editor.hidden = !editor.hidden;
-    if (!editor.hidden) renderPromptProfileEditor();
+    if (!editor.hidden) {
+      const pending = promptProfileSaveTimer !== null;
+      renderPromptProfileSaveState(pending ? '保存中…' : '', pending ? 'pending' : '');
+      renderPromptProfileEditor();
+    } else {
+      flushPromptProfiles();
+    }
     setStatus(editor.hidden ? '已收起预设编辑器' : '正在编辑提示词预设', 'info');
   });
   bindDom('#oair_profile_select', 'change', event => {
+    flushPromptProfiles();
     state.editingProfileId = event.target.value;
+    renderPromptProfileSaveState('');
     renderPromptProfileEditor();
   });
   bindDom('#oair_profile_name', 'input', event => {
@@ -2475,6 +2536,13 @@ function previewFloorLabel(floor) {
   return `第 ${floor.messageId} 楼 ${name}${suffix}`;
 }
 
+function describeProfileUsage(profile) {
+  const roles = [];
+  if (profile.id === getSummaryProfile().id) roles.push('整理预设');
+  if (profile.id === getFallbackProfile().id) roles.push('补救预设');
+  return roles;
+}
+
 function renderProfilePreview(container, { profile, floor, rendered, skipped }) {
   container.hidden = false;
   container.replaceChildren();
@@ -2493,7 +2561,14 @@ function renderProfilePreview(container, { profile, floor, rendered, skipped }) 
   hide.addEventListener('click', () => {
     container.hidden = true;
   });
-  head.append(title, badge, hide);
+  head.append(title, badge);
+  for (const label of describeProfileUsage(profile)) {
+    const usage = makeEl('span');
+    usage.className = 'oair-preview-usage';
+    usage.textContent = label;
+    head.append(usage);
+  }
+  head.append(hide);
   container.append(head);
 
   const meta = makeEl('div');
@@ -2535,8 +2610,8 @@ function renderProfilePreview(container, { profile, floor, rendered, skipped }) 
 async function previewCurrentProfile() {
   const container = q('#oair_profile_preview');
   if (!container) return;
-  saveSettings({ silent: true });
-  const profile = getSummaryProfile();
+  flushPromptProfiles();
+  const profile = getEditingProfile();
   try {
     const floor = readTestFloor();
     const sourceMessage = String(floor.message.message || '').replace(/<pic[^>]*>/g, '').trim();
@@ -2731,6 +2806,7 @@ function switchPanelTab(tabName) {
 
 function setPanelVisible(visible) {
   if (!state.panel) return;
+  if (!visible) flushPromptProfiles();
   state.panel.hidden = !visible;
   if (visible) syncPanelLayout();
 }
