@@ -64,6 +64,18 @@
 .oair-settings-ui { padding: 0 12px 12px; display: grid; gap: 10px; }
 [data-oair-tab-pane] { display:grid; gap:10px; }
 [data-oair-tab-pane][hidden] { display:none !important; }
+/* 标题栏和 Tab 条共用一块吸顶区域，滚动内容时两者都保持可见 */
+.oair-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: grid;
+  gap: 10px;
+  margin: 0 -12px;
+  padding: 12px 12px 8px;
+  background: rgba(15, 18, 24, .98);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
 .oair-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
 .oair-tab {
   color:rgba(233,238,245,.78);
@@ -76,17 +88,13 @@
 }
 .oair-tab.active { color:#fff; background:rgba(82,111,146,.82); border-color:rgba(137,190,238,.5); }
 .oair-head {
-  position: sticky;
-  top: 0;
-  z-index: 6;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   margin: 0 -12px;
-  padding: 12px 12px 8px;
+  padding: 0 12px 8px;
   border-bottom: 1px solid rgba(255,255,255,.12);
-  background: rgba(15, 18, 24, .98);
   user-select: none;
 }
 /* 大屏可拖拽顶栏移动窗口；移动端铺满屏幕时该栏只做标题栏 */
