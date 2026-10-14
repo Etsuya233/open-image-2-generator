@@ -6,6 +6,6 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Etsuya",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minimum_client_version": "1.18.0"
 }
