@@ -11,7 +11,7 @@ const SETTINGS_DRAWER_HTML = `
 <div id="oair_settings" class="oair-settings">
   <div class="inline-drawer">
     <div class="inline-drawer-toggle inline-drawer-header">
-      <b>image2 角色参考图</b>
+      <b>Image Hub</b>
       <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
     </div>
     <div class="inline-drawer-content">
@@ -42,7 +42,7 @@ export function createEntries({ doc, onToggle, onChange }) {
   const mountSettingsDrawer = () => {
     const container = doc.getElementById(SETTINGS_CONTAINER_ID);
     if (!container) {
-      console.warn('[image2] 没有找到酒馆的扩展设置容器，生图入口设置无法挂载');
+      console.warn('[image-hub] 没有找到酒馆的扩展设置容器，生图入口设置无法挂载');
       return;
     }
     const holder = doc.createElement('div');
@@ -163,7 +163,7 @@ export function createEntries({ doc, onToggle, onChange }) {
     launcher = doc.createElement('button');
     launcher.id = 'oair_launcher';
     launcher.type = 'button';
-    launcher.textContent = 'image2 参考图';
+    launcher.textContent = 'Image Hub';
     launcher.title = '点击开关面板，按住可以拖到别处';
     launcher.addEventListener('click', () => {
       if (dragged) {
@@ -189,7 +189,7 @@ export function createEntries({ doc, onToggle, onChange }) {
     if (wandItem) return;
     const menu = doc.getElementById(WAND_MENU_ID);
     if (!menu) {
-      console.warn('[image2] 没有找到酒馆的扩展菜单，魔法棒入口无法挂载');
+      console.warn('[image-hub] 没有找到酒馆的扩展菜单，魔法棒入口无法挂载');
       return;
     }
     wandItem = doc.createElement('div');
@@ -198,7 +198,7 @@ export function createEntries({ doc, onToggle, onChange }) {
     const icon = doc.createElement('div');
     icon.className = 'fa-solid fa-image extensionsMenuExtensionButton';
     const label = doc.createElement('span');
-    label.textContent = 'image2 参考图';
+    label.textContent = 'Image Hub';
     wandItem.append(icon, label);
     wandItem.addEventListener('click', onToggle);
     menu.append(wandItem);

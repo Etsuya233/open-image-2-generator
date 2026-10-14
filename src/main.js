@@ -1008,7 +1008,7 @@ function openImageLightbox(url, prompt = '', meta = null) {
   const view = overlay.querySelector('.oair-lightbox-view');
   const image = doc.createElement('img');
   image.className = 'oair-lightbox-img';
-  image.alt = 'image2 大图预览';
+  image.alt = 'Image Hub 大图预览';
   image.src = href;
   view.append(image);
   overlay.querySelector('.oair-lightbox-title').textContent = meta?.title ?? '';
@@ -1116,7 +1116,7 @@ function collectImageUrls(data, responseText) {
 
 function imageMarkdown(url) {
   const safeUrl = String(url || '').trim();
-  return `![image2](${safeUrl})`;
+  return `![Image Hub](${safeUrl})`;
 }
 
 async function updateMessageWithImage(messageId, cleanedMessage, imageUrls) {
@@ -1243,12 +1243,12 @@ async function onGenerationAfterCommands(...args) {
       content: state.settings.mainPrompt,
       should_scan: false,
     }]);
-    addLog('info', '已为本次生成注入 image2 主提示词', {
+    addLog('info', '已为本次生成注入 Image Hub 主提示词', {
       eventArgs: args,
       injectId: INJECT_ID,
       prompt: state.settings.mainPrompt,
     });
-    setStatus('已注入本次 image2 提示规则', 'ok');
+    setStatus('已注入本次 Image Hub 提示规则', 'ok');
   } catch (error) {
     addLog('error', '注入主提示词失败', { error: error.message, stack: error.stack });
     setStatus(`注入失败：${error.message}`, 'error');
@@ -1547,7 +1547,7 @@ function saveSettings(options = {}) {
     if (!options.silent) {
       addLog('info', '设置已保存', { settings: state.settings });
       setStatus('设置已保存', 'ok');
-      notify('success', 'image2 参考图增强版设置已保存');
+      notify('success', 'Image Hub 设置已保存');
     }
   } catch (error) {
     addLog('error', '保存设置失败', { error: error.message, stack: error.stack });
@@ -2043,7 +2043,7 @@ function exportReferenceLibrary(characterId = null) {
   const label = characterId
     ? payload.characters[0]?.name?.replace(/[\\/:*?"<>|]/g, '_') || 'character'
     : 'all-characters';
-  downloadTextFile(`image2-reference-${label}.json`, JSON.stringify(payload, null, 2));
+  downloadTextFile(`st-image-hub-reference-${label}.json`, JSON.stringify(payload, null, 2));
   setStatus(`已导出 ${payload.characters.length} 个角色、${payload.images.length} 张参考图`, 'ok');
   addLog('info', '参考图库已导出', {
     characters: payload.characters.map(item => item.name),
@@ -2061,7 +2061,7 @@ async function importReferenceLibrary(file) {
     throw new Error(`导入文件不是有效 JSON：${error.message}`);
   }
   if (payload?.type !== 'oair-image2-character-reference-library' || !Array.isArray(payload.characters)) {
-    throw new Error('不是 image2 角色参考图库导出文件');
+    throw new Error('不是 Image Hub 角色参考图库导出文件');
   }
 
   const currentCharacters = getReferenceCharacters();
@@ -2435,7 +2435,7 @@ function exportPromptProfiles() {
     exportedAt: new Date().toISOString(),
     profiles: state.settings.summaryProfiles,
   };
-  downloadTextFile('image2-prompt-profiles.json', JSON.stringify(payload, null, 2));
+  downloadTextFile('st-image-hub-prompt-profiles.json', JSON.stringify(payload, null, 2));
   setStatus(`已导出 ${payload.profiles.length} 个预设`, 'ok');
   addLog('info', '提示词预设已导出', {
     profiles: payload.profiles.map(profile => ({ id: profile.id, name: profile.name, entries: profile.prompts.length })),
@@ -2452,7 +2452,7 @@ async function importPromptProfiles(file) {
     throw new Error(`导入文件不是有效 JSON：${error.message}`);
   }
   if (payload?.type !== PROMPT_PROFILE_EXPORT_TYPE || !Array.isArray(payload.profiles)) {
-    throw new Error('不是 image2 提示词预设导出文件');
+    throw new Error('不是 Image Hub 提示词预设导出文件');
   }
 
   const existing = state.settings.summaryProfiles;
@@ -3270,7 +3270,7 @@ export async function init() {
   await refreshReferenceImages();
 
   setStatus('就绪', 'info');
-  addLog('info', 'image2 角色参考图增强版已启动', {
+  addLog('info', 'Image Hub 已启动', {
     integration: 'SillyTavern native extension',
     settings: state.settings,
     referenceCharacters: getReferenceCharacters().map(character => ({

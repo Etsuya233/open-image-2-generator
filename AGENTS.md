@@ -1,4 +1,4 @@
-# open-image-2-generator
+# st-image-hub
 
 A native SillyTavern UI extension. `index.js` loads the modules in `src/`; `style.css` holds the UI styles.
 `README.md` covers installation, migration, and the local development junction.

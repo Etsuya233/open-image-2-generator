@@ -9,7 +9,7 @@ $extensionsDirectory = Join-Path $SillyTavernRoot "data\$UserHandle\extensions"
 if (-not (Test-Path -LiteralPath $extensionsDirectory -PathType Container)) {
     throw "ST 扩展目录不存在：$extensionsDirectory"
 }
-$extensionPath = Join-Path $extensionsDirectory 'open-image-2-generator'
+$extensionPath = Join-Path $extensionsDirectory 'st-image-hub'
 if (Test-Path -LiteralPath $extensionPath) {
     $existing = Get-Item -LiteralPath $extensionPath
     if ($existing.LinkType -ne 'Junction' -or $existing.Target -ne $extensionSource) {

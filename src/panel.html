@@ -2,7 +2,7 @@
 <div class="oair-settings-ui">
   <div class="oair-head" title="按住此栏可拖动窗口">
     <div>
-      <div class="oair-title">image2 角色参考图增强版</div>
+      <div class="oair-title">Image Hub</div>
       <div id="oair_status">就绪</div>
     </div>
     <div class="oair-row">
@@ -12,7 +12,7 @@
     </div>
   </div>
 
-  <div class="oair-tabs" role="tablist" aria-label="image2 功能页面">
+  <div class="oair-tabs" role="tablist" aria-label="Image Hub 功能页面">
     <button class="oair-tab active" data-oair-tab="main" role="tab" aria-selected="true" type="button">生图与设置</button>
     <button class="oair-tab" data-oair-tab="gallery" role="tab" aria-selected="false" type="button">生成图库</button>
     <button class="oair-tab" data-oair-tab="references" role="tab" aria-selected="false" type="button">角色参考图库</button>
@@ -21,7 +21,7 @@
   <div data-oair-tab-pane="main">
   <div class="oair-section" data-oair-section="main-prompt">
     <div class="oair-section-title">1. 主模型提示注入</div>
-    <label class="oair-check"><input data-oair-setting="injectMainPrompt" type="checkbox">正常对话前自动注入 image2 规则</label>
+    <label class="oair-check"><input data-oair-setting="injectMainPrompt" type="checkbox">正常对话前自动注入 Image Hub 规则</label>
     <label class="oair-check"><input data-oair-setting="processAssistantMessages" type="checkbox">监听 assistant 回复并自动生图</label>
     <label class="oair-check"><input data-oair-setting="autoFallbackWhenNoPic" type="checkbox">没有 &lt;pic&gt; 标签时自动补救生成提示词</label>
     <label class="oair-check"><input data-oair-setting="removePicTag" type="checkbox">提取后移除 &lt;pic&gt; 标签</label>
@@ -33,7 +33,7 @@
     <div class="oair-btn-row">
       <button id="oair_btn_reset_main_prompt" class="oair-btn secondary" type="button">恢复默认注入规则</button>
     </div>
-    <div class="oair-help">这段文字只注入正常对话主模型，让它在正文末尾输出一条安全的 &lt;pic prompt="..."&gt;。不会发送给 image2 图片后端。</div>
+    <div class="oair-help">这段文字只注入正常对话主模型，让它在正文末尾输出一条安全的 &lt;pic prompt="..."&gt;。不会发送给图片后端。</div>
   </div>
 
   <div class="oair-section" data-oair-section="image-backend">

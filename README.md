@@ -1,20 +1,22 @@
-# open-image-2-generator
+# Image Hub
+
+仓库标识是 `st-image-hub`，用在仓库名、安装目录和包名这些需要唯一的地方；面向用户的显示名是 **Image Hub**。
 
 SillyTavern 原生 UI 扩展：自动读取回复末尾的 `<pic prompt="...">` 并生成图片，支持按角色名与别名匹配参考图、图生图、上下文提示词整理、图片预览与日志。运行时无需 TavernHelper / JS-Slash-Runner。
 
 ## 安装与更新
 
-将此仓库放在 `SillyTavern/data/<用户>/extensions/open-image-2-generator` 下，确保该目录直接包含 `manifest.json`，然后刷新 ST 页面。默认从输入框左侧的魔法棒（酒馆扩展菜单）里的 **image2 参考图** 打开面板，入口可以改成右下角的悬浮窗，见下文“生图入口”。
+将此仓库放在 `SillyTavern/data/<用户>/extensions/st-image-hub` 下，确保该目录直接包含 `manifest.json`，然后刷新 ST 页面。默认从输入框左侧的魔法棒（酒馆扩展菜单）里的 **Image Hub** 打开面板，入口可以改成右下角的悬浮窗，见下文“生图入口”。
 
-仓库发布到 Git 远端后，也可以在 ST 的“扩展 → 安装扩展”中填写仓库地址安装，并通过扩展管理更新。目前本仓库没有配置 Git 远端。
+仓库位于 `https://github.com/Etsuya233/st-image-hub`，可以在 ST 的“扩展 → 安装扩展”中填写该地址安装，并通过扩展管理更新。
 
 ### 本机开发
 
 本机使用目录联接，让 ST 直接加载这个工作目录：
 
 ```text
-D:\programming\SillyTavern\data\default-user\extensions\open-image-2-generator
-  → D:\programming\silly\open-image-2-generator
+D:\programming\SillyTavern\data\default-user\extensions\st-image-hub
+  → D:\programming\silly\st-image-hub
 ```
 
 首次建立连接：
@@ -80,7 +82,7 @@ Prompt 内容支持酒馆宏（`{{char}}`、`{{user}}`、`{{getvar::名字}}`、
 
 「措辞控制规则」是预设里的一条普通 Prompt，可以编辑、关闭或删除。旧版本会把它强制追加到整理规则和补救规则末尾，现在不再追加，第 1 步的主模型注入规则仍然自动追加。
 
-面板里的预设编辑器可以新建（从默认条目起步）、复制为副本、重命名、删除、恢复默认条目，也可以导出和导入。「导出全部」写出一个 `image2-prompt-profiles.json`，`type` 为 `oair-image2-prompt-profiles`；导入只认这个格式，冲突的预设 id 会重新分配，重名的预设会加 `(2)` 后缀，无效条目会被丢弃。编辑器在手机上同样可用：条目排序用上移 / 下移按钮，卡片头部和按钮行会自动换行。
+面板里的预设编辑器可以新建（从默认条目起步）、复制为副本、重命名、删除、恢复默认条目，也可以导出和导入。「导出全部」写出一个 `st-image-hub-prompt-profiles.json`，`type` 为 `oair-image2-prompt-profiles`；导入只认这个格式，冲突的预设 id 会重新分配，重名的预设会加 `(2)` 后缀，无效条目会被丢弃。编辑器在手机上同样可用：条目排序用上移 / 下移按钮，卡片头部和按钮行会自动换行。
 
 条目卡默认只显示一行正文摘要，点摘要或用头部「展开」按钮才展开正文输入框；头部序号对应发送顺序，卡片左侧竖条按消息角色着色（系统 / 用户 / 助手），内置素材条目直接显示会填入什么，没有可展开的正文。改名和改内容会在停止输入约 0.4 秒后写盘，列表右上角显示「保存中…」和「已保存」，收起编辑器或打开预览前会立刻补写。
 
@@ -90,12 +92,12 @@ Prompt 内容支持酒馆宏（`{{char}}`、`{{user}}`、`{{getvar::名字}}`、
 
 ## 生图入口
 
-酒馆的「扩展」设置页左侧有一栏 **image2 角色参考图**（`#extensions_settings` 里的 `inline-drawer`），里面的「生图入口」有两个互斥选项：
+酒馆的「扩展」设置页左侧有一栏 **Image Hub**（`#extensions_settings` 里的 `inline-drawer`），里面的「生图入口」有两个互斥选项：
 
 | 选项 | 入口位置 |
 | --- | --- |
-| 输入框旁边的魔法棒 | 挂到酒馆扩展菜单（`#extensionsMenu`）里的 **image2 参考图** 菜单项 |
-| 可拖拽悬浮窗 | 右下角常驻的 **image2 参考图** 按钮，按住可以拖到屏幕任意位置 |
+| 输入框旁边的魔法棒 | 挂到酒馆扩展菜单（`#extensionsMenu`）里的 **Image Hub** 菜单项 |
+| 可拖拽悬浮窗 | 右下角常驻的 **Image Hub** 按钮，按住可以拖到屏幕任意位置 |
 
 默认是魔法棒。切换后立刻生效，不需要刷新页面，也不需要点保存。两个入口都是点击切换面板的显示/隐藏，打开的是同一个面板，拖动和缩放行为完全一致。设置保存为 `entryPoint`（`wand` 或 `floating`）。
 
