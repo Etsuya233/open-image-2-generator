@@ -2697,6 +2697,7 @@ function applyPanelSize() {
 function syncPanelLayout() {
   const panel = state.panel;
   if (!panel) return;
+  const win = state.uiWindow || W;
   if (useFullscreenPanelLayout()) {
     const { top, bottom } = measureTavernBarSpace();
     panel.classList.add('oair-panel-fullscreen');
@@ -2704,9 +2705,12 @@ function syncPanelLayout() {
     panel.style.left = '';
     panel.style.top = top > 0 ? `${top}px` : '';
     panel.style.bottom = bottom > 0 ? `${bottom}px` : '';
-    // 铺满尺寸由 top/bottom 决定，清掉拖拽留下的宽高。
+    // 页面根元素带 transform 时，fixed 元素靠 top/bottom 拉伸会失效，高度按测到的栏位直接算；
+    // 两条栏位都没测到时清掉高度，交回 CSS 的 env(safe-area-inset-*) 定位。
+    panel.style.height = top > 0 || bottom > 0
+      ? `${Math.max(PANEL_MIN_HEIGHT, win.innerHeight - top - bottom)}px`
+      : '';
     panel.style.width = '';
-    panel.style.height = '';
     return;
   }
   panel.classList.remove('oair-panel-fullscreen');
