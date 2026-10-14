@@ -1768,13 +1768,22 @@ function promptEntryText(entry, { sourceMessage, texts }) {
 
 function buildProfileMessages(profile, { sourceMessage = '', texts = new Map() } = {}) {
   const messages = [];
+  const sources = [];
+  const skipped = [];
   for (const entry of profile.prompts) {
-    if (!entry.enabled) continue;
+    if (!entry.enabled) {
+      skipped.push({ name: entry.name, reason: 'disabled' });
+      continue;
+    }
     const content = String(promptEntryText(entry, { sourceMessage, texts }) || '').trim();
-    if (!content) continue;
+    if (!content) {
+      skipped.push({ name: entry.name, reason: 'empty' });
+      continue;
+    }
     messages.push({ role: entry.role, content });
+    sources.push(entry.name);
   }
-  return messages;
+  return { messages, sources, skipped };
 }
 
 async function generatePromptByScriptContext({
@@ -1807,7 +1816,7 @@ async function generatePromptByScriptContext({
       || [...texts.values()].some(text => String(text || '').trim());
     if (!hasMaterial) throw new Error('没有可用于整理的上下文或消息正文');
 
-    const messages = buildProfileMessages(profile, { sourceMessage, texts });
+    const { messages, skipped } = buildProfileMessages(profile, { sourceMessage, texts });
     if (!messages.length) throw new Error(`预设「${profile.name}」没有可发送的 Prompt，请在第 4 步检查条目开关`);
 
     updateStep('prompt', 'running', sourceLabel === 'fallback' ? '正在补救生成 <pic> 提示词' : '正在调用 AI 整理提示词');
@@ -1815,6 +1824,7 @@ async function generatePromptByScriptContext({
       sourceLabel,
       profile: { id: profile.id, name: profile.name },
       messages,
+      skipped,
     });
 
     const result = await tavern.generateRaw({
@@ -2457,6 +2467,111 @@ function bindPromptProfileEditor() {
   });
 }
 
+const SKIP_REASON_LABELS = { disabled: '已关闭', empty: '没有内容' };
+
+function previewFloorLabel(floor) {
+  const name = floor.message.name || floor.message.role;
+  const suffix = floor.usedDefault ? '，楼层留空时取最后一条 assistant' : '';
+  return `第 ${floor.messageId} 楼 ${name}${suffix}`;
+}
+
+function renderProfilePreview(container, { profile, floor, rendered, skipped }) {
+  container.hidden = false;
+  container.replaceChildren();
+
+  const head = makeEl('div');
+  head.className = 'oair-preview-head';
+  const title = makeEl('span');
+  title.textContent = `预设预览 · ${profile.name}`;
+  const badge = makeEl('span');
+  badge.className = 'oair-badge';
+  badge.textContent = `${rendered.length} 条消息`;
+  const hide = makeEl('button');
+  hide.type = 'button';
+  hide.className = 'oair-btn secondary oair-preview-hide';
+  hide.textContent = '收起';
+  hide.addEventListener('click', () => {
+    container.hidden = true;
+  });
+  head.append(title, badge, hide);
+  container.append(head);
+
+  const meta = makeEl('div');
+  meta.className = 'oair-help';
+  meta.textContent = `${previewFloorLabel(floor)}；宏已按当前聊天替换，{{random}} 这类宏每次取值可能不同。预览只组装消息，不调用 AI，也不改动聊天。`;
+  container.append(meta);
+
+  if (!rendered.length) {
+    const empty = makeEl('div');
+    empty.className = 'oair-preview-empty';
+    empty.textContent = '当前预设没有可发送的 Prompt，打开条目或填写内容后再看。';
+    container.append(empty);
+  }
+
+  const list = makeEl('div');
+  list.className = 'oair-preview-messages';
+  for (const item of rendered) {
+    const box = makeEl('div');
+    box.className = 'oair-preview-message';
+    box.dataset.role = item.role;
+    const role = makeEl('div');
+    role.className = 'oair-preview-role';
+    role.textContent = `${PROMPT_ROLE_LABELS[item.role] ?? item.role} · ${item.source} · ${item.content.length} 字`;
+    const pre = makeEl('pre');
+    pre.textContent = item.content;
+    box.append(role, pre);
+    list.append(box);
+  }
+  container.append(list);
+
+  if (skipped.length) {
+    const note = makeEl('div');
+    note.className = 'oair-help';
+    note.textContent = `未发送：${skipped.map(item => `${item.name}（${SKIP_REASON_LABELS[item.reason] ?? item.reason}）`).join('、')}`;
+    container.append(note);
+  }
+}
+
+async function previewCurrentProfile() {
+  const container = q('#oair_profile_preview');
+  if (!container) return;
+  saveSettings({ silent: true });
+  const profile = getSummaryProfile();
+  try {
+    const floor = readTestFloor();
+    const sourceMessage = String(floor.message.message || '').replace(/<pic[^>]*>/g, '').trim();
+    const texts = await collectContextSections(profileMaterialSections(profile), { historyEndId: floor.messageId });
+    const { messages, sources, skipped } = buildProfileMessages(profile, { sourceMessage, texts });
+    const context = SillyTavern.getContext();
+    const rendered = messages.map((message, index) => ({
+      role: message.role,
+      source: sources[index],
+      content: context.substituteParams(message.content),
+    }));
+    renderProfilePreview(container, { profile, floor, rendered, skipped });
+    setStatus(`已预览预设「${profile.name}」：${rendered.length} 条消息`, 'ok');
+    addLog('info', '预设预览完成', {
+      profile: { id: profile.id, name: profile.name },
+      floor: { messageId: floor.messageId, usedDefaultFloor: floor.usedDefault },
+      messages: rendered.map(item => ({ role: item.role, source: item.source, chars: item.content.length })),
+      skipped,
+    });
+  } catch (error) {
+    container.hidden = false;
+    container.replaceChildren();
+    const box = makeEl('div');
+    box.className = 'oair-preview-error';
+    box.textContent = `预览失败：${error.message}`;
+    container.append(box);
+    setStatus(`预览失败：${error.message}`, 'error');
+    addLog('error', '预设预览失败', { error: error.message, stack: error.stack });
+  }
+}
+
+function bindProfilePreview() {
+  bindDom('#oair_btn_preview_profile', 'click', () => runWithButtonBusy('#oair_btn_preview_profile', '组装中...', previewCurrentProfile));
+}
+
 function makeReferenceButton(text, className = 'secondary') {
   const button = makeEl('button');
   button.type = 'button';
@@ -2981,6 +3096,7 @@ function makeUi() {
   renderReferenceCharacters();
   renderReferenceMatchPreview();
   bindPromptProfileEditor();
+  bindProfilePreview();
 
   state.disposers.push(() => panel.remove());
   const onKeyDown = event => {

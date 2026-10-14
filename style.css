@@ -279,6 +279,19 @@
 .oair-prompt-body[hidden] { display:none; }
 .oair-prompt-content { width:100%; min-height:96px; }
 .oair-profile-editor code { padding:1px 4px; border-radius:3px; background:rgba(0,0,0,.35); color:#9bdcff; font-size:11.5px; }
+/* 预设预览：只看当前楼层组装出来的消息 */
+.oair-profile-preview { display:grid; gap:8px; padding:10px; border:1px solid rgba(255,255,255,.13); border-radius:6px; background:rgba(0,0,0,.24); }
+.oair-profile-preview[hidden] { display:none; }
+.oair-preview-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:#fff; font-size:12px; font-weight:600; }
+.oair-preview-hide { margin-left:auto; min-height:26px; padding:3px 9px; font-size:12px; }
+.oair-preview-messages { display:grid; gap:8px; }
+.oair-preview-message { display:grid; gap:4px; padding:8px; border-radius:6px; background:rgba(255,255,255,.045); border-left:3px solid rgba(255,225,155,.5); }
+.oair-preview-message[data-role="user"] { border-left-color: rgba(155,220,255,.55); }
+.oair-preview-message[data-role="assistant"] { border-left-color: rgba(118,227,155,.55); }
+.oair-preview-role { color:rgba(233,238,245,.66); font-size:11.5px; overflow-wrap:anywhere; }
+.oair-preview-message pre { margin:0; max-height:220px; overflow:auto; padding:8px; border-radius:5px; background:rgba(0,0,0,.28); color:#dbe7f4; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; line-height:1.5; }
+.oair-preview-empty, .oair-preview-error { padding:12px 10px; border:1px dashed rgba(255,255,255,.18); border-radius:5px; text-align:center; color:rgba(233,238,245,.7); font-size:12px; line-height:1.5; }
+.oair-preview-error { color:#ffb1b9; border-color:rgba(255,177,185,.35); }
 
 #oair_generated_gallery { display:grid; gap:4px; }
 .oair-gallery-actions { margin-left:auto; display:flex; gap:6px; }

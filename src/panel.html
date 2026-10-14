@@ -170,8 +170,9 @@
     </div>
     <div class="oair-btn-row">
       <button id="oair_btn_edit_profiles" class="oair-btn secondary" type="button">编辑预设</button>
+      <button id="oair_btn_preview_profile" class="oair-btn secondary" type="button">预览当前预设</button>
     </div>
-    <div class="oair-help">整理和补救各自选一个预设，预设决定发给 AI 的 Prompt 顺序、内容和角色。预设里可以插入角色卡、世界书激活片段、聊天记录、聊天变量和本次回复这些内置素材条目。</div>
+    <div class="oair-help">整理和补救各自选一个预设，预设决定发给 AI 的 Prompt 顺序、内容和角色。预设里可以插入角色卡、世界书激活片段、聊天记录、聊天变量和本次回复这些内置素材条目。「预览当前预设」按第 5 步的聊天楼层组装一遍消息，只看结果，不会调用 AI。</div>
 
     <div id="oair_profile_editor" class="oair-profile-editor" hidden>
       <div class="oair-grid-2">
@@ -203,6 +204,8 @@
       </div>
       <div class="oair-help">预设里可以直接写酒馆宏，例如 {{char}}、{{user}}、{{getvar::变量名}}、{{random::甲,乙}}，发送前会按当前聊天替换。另外 <code>{{image2_context}}</code> 会插入角色卡、世界书片段和最近聊天记录，<code>{{image2_reply}}</code> 会插入本次 assistant 回复正文。聊天变量属于敏感素材，只有打开「聊天变量」条目时才会读取。</div>
     </div>
+
+    <div id="oair_profile_preview" class="oair-profile-preview" hidden></div>
   </div>
 
   <div class="oair-section" data-oair-section="gallery">
